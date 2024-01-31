@@ -52,8 +52,8 @@ endif()
 message("Vulkan SDK path: ${VULKAN_SDK}")
 
 # SHADERS COMPILE
-set(GLSL_DEBUG_FLAG $<$<CONFIG:Debug>:-g>)
-set(GLSL_COMPILER ${VULKAN_SDK}/bin/glslc -mfmt=num ${GLSL_DEBUG_FLAG})
+# set(GLSL_DEBUG_FLAG $<$<CONFIG:Debug>:-g>)
+set(GLSL_COMPILER ${VULKAN_SDK}/bin/glslc)
 
 foreach(SHADER ${SHDS})
   get_filename_component(SHADER_NAME ${SHADER} NAME)

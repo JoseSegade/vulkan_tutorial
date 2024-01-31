@@ -4,6 +4,7 @@
 #include "../inc/Logging.h"
 #include "../inc/Device.h"
 #include "../inc/Swapchain.h"
+#include "../inc/Pipeline.h"
 
 void Engine::init() {
   if (mHasDebug) {
@@ -13,6 +14,7 @@ void Engine::init() {
   build_glfw_window();
   make_instance();
   make_device();
+  make_pipeline();
 
   if (mHasDebug) {
     printf("Initializing app done.\n");
@@ -23,6 +25,10 @@ void Engine::destroy() {
   if (mHasDebug) {
     printf("Destroying app...\n");
   }
+
+  mDevice.destroyPipeline(mGraphicsPipeline);
+  mDevice.destroyPipelineLayout(mPipelineLayout);
+  mDevice.destroyRenderPass(mRenderPass);
 
   for (const vkUtil::SwapChainFrame& f : mSwapchainFrames) {
     mDevice.destroyImageView(f.imageView);
@@ -101,4 +107,20 @@ void Engine::make_device() {
   mSwapchainFrames = bundle.frames;
   mSwapchainFormat = bundle.format;
   mSwapchainExtent = bundle.extent;
+}
+
+void Engine::make_pipeline() {
+  vkInit::GraphicsPipelineInBundle specification {};
+  specification.device           = mDevice;
+  specification.vertexFilepath   = "./bin/shaders/default.vert.spv";
+  specification.fragmenFilepath  = "./bin/shaders/default.frag.spv";
+  specification.extent           = mSwapchainExtent;
+  specification.swapchainFormat  = mSwapchainFormat;
+
+  vkInit::GraphicsPipelineOutBundle output =
+    vkInit::make_graphics_pipeline(specification, mHasDebug);
+
+  mPipelineLayout   = output.pipelineLayout;
+  mRenderPass       = output.renderPass;
+  mGraphicsPipeline = output.graphicsPipeline;
 }

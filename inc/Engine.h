@@ -16,6 +16,7 @@ class Engine {
   void build_glfw_window();
   void make_instance();
   void make_device();
+  void make_pipeline();
 
   bool                       mHasDebug       = true;
 
@@ -37,6 +38,10 @@ class Engine {
   std::vector<vkUtil::SwapChainFrame> mSwapchainFrames;
   vk::Format                          mSwapchainFormat;
   vk::Extent2D                        mSwapchainExtent;
+
+  vk::PipelineLayout                  mPipelineLayout;
+  vk::RenderPass                      mRenderPass;
+  vk::Pipeline                        mGraphicsPipeline;
 };
 
 #endif  // INC_ENGINE_H_
