@@ -6,14 +6,23 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-file(GLOB_RECURSE SRCS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
-file(GLOB_RECURSE HDRS ${CMAKE_CURRENT_SOURCE_DIR}/inc/*.h)
+set(SRCS_DIR ${PROJECT_SOURCE_DIR}/src)
+set(HDRS_DIR ${PROJECT_SOURCE_DIR}/inc)
+set(SHDS_DIR ${SRCS_DIR}/shaders)
+set(EXT_DIR ${PROJECT_SOURCE_DIR}/ext)
+
+file(GLOB_RECURSE SRCS ${SRCS_DIR}/*.cpp)
+file(GLOB_RECURSE HDRS ${HDRS_DIR}/*.h)
+file(GLOB_RECURSE SHDS ${SHDS_DIR}/*.vert ${SHDS_DIR}/*.frag)
 
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY $<1:${CMAKE_SOURCE_DIR}/bin>)
+set(BIN_DIR ${PROJECT_SOURCE_DIR}/bin)
+set(SHADERS_OUT_DIR ${BIN_DIR}/shaders)
+file(MAKE_DIRECTORY ${BIN_DIR})
+file(MAKE_DIRECTORY ${SHADERS_OUT_DIR})
 
-add_subdirectory("ext/glfw")
-
+# CHECK DEPENDENCIES
 find_package(Git QUIET)
 if(GIT_FOUND AND EXISTS ${PROJECT_SOURCE_DIR}/.git)
   option(GIT_SUBMODULE "Check submodules during build" ON)
@@ -28,9 +37,11 @@ if(GIT_FOUND AND EXISTS ${PROJECT_SOURCE_DIR}/.git)
   endif()
 endif()
 
-if(NOT EXISTS ${PROJECT_SOURCE_DIR}/ext/glfw/CMakeLists.txt)
+if(NOT EXISTS ${EXT_DIR}/glfw/CMakeLists.txt)
   message(FATAL_ERROR "The glfw submodule was not downloaded! GIT_SUBMODULE was truned off or failed. Please update submodules and try again.")
 endif()
+
+add_subdirectory("ext/glfw")
 
 if(NOT DEFINED {VULKAN_SDK})
   if(NOT DEFINED ENV{VULKAN_SDK})
@@ -40,6 +51,25 @@ if(NOT DEFINED {VULKAN_SDK})
 endif()
 message("Vulkan SDK path: ${VULKAN_SDK}")
 
+# SHADERS COMPILE
+set(GLSL_DEBUG_FLAG $<$<CONFIG:Debug>:-g>)
+set(GLSL_COMPILER ${VULKAN_SDK}/bin/glslc -mfmt=num ${GLSL_DEBUG_FLAG})
+
+foreach(SHADER ${SHDS})
+  get_filename_component(SHADER_NAME ${SHADER} NAME)
+  set(SHADER_OUT_NAME ${SHADERS_OUT_DIR}/${SHADER_NAME}.spv)
+  list(APPEND SHADER_OUT_NAMES ${SHADER_OUT_NAME})
+  add_custom_command(
+    MAIN_DEPENDENCY ${SHADER}
+    OUTPUT ${SHADER_OUT_NAME}
+    COMMAND ${GLSL_COMPILER} ${SHADER} "-o" ${SHADER_OUT_NAME}
+    VERBATIM
+  )
+endforeach()
+
+add_custom_target(build_shaders DEPENDS ${SHADER_OUT_NAMES})
+
+# PROJECT COMPILE
 add_executable(${PROJECT_NAME} ${HDRS} ${SRCS})
 
 find_path(VULKAN_INC vulkan/vulkan.h
@@ -61,3 +91,5 @@ find_library(VULKAN_LIB
 )
 
 target_link_libraries(VulkanTutorial ${VULKAN_LIB} glfw)
+
+add_dependencies(${PROJECT_NAME} build_shaders)
