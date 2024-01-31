@@ -3,6 +3,7 @@
 #include "../inc/Instance.h"
 #include "../inc/Logging.h"
 #include "../inc/Device.h"
+#include "../inc/Swapchain.h"
 
 void Engine::init() {
   if (mHasDebug) {
@@ -23,6 +24,9 @@ void Engine::destroy() {
     printf("Destroying app...\n");
   }
 
+  for (const vkUtil::SwapChainFrame& f : mSwapchainFrames) {
+    mDevice.destroyImageView(f.imageView);
+  }
   mDevice.destroySwapchainKHR(mSwapchain);
   mDevice.destroy();
   mInstance.destroySurfaceKHR(mSurface);
@@ -94,7 +98,7 @@ void Engine::make_device() {
     mPhysicalDevice, mDevice, mSurface, mWidth, mHeight, mHasDebug);
 
   mSwapchain       = bundle.swapchain;
-  mSwapchainImages = bundle.images;
+  mSwapchainFrames = bundle.frames;
   mSwapchainFormat = bundle.format;
   mSwapchainExtent = bundle.extent;
 }

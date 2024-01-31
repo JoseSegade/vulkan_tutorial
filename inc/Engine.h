@@ -4,6 +4,7 @@
 #define INC_ENGINE_H_
 
 #include "Common.h"
+#include "Frame.h"
 #include <vector>
 
 class Engine {
@@ -31,10 +32,11 @@ class Engine {
   vk::Queue                  mGraphicsQueue  = nullptr;
   vk::Queue                  mPresentQueue   = nullptr;
   vk::SurfaceKHR             mSurface        = nullptr;
-  vk::SwapchainKHR           mSwapchain;
-  std::vector<vk::Image>     mSwapchainImages;
-  vk::Format                 mSwapchainFormat;
-  vk::Extent2D               mSwapchainExtent;
+
+  vk::SwapchainKHR                    mSwapchain;
+  std::vector<vkUtil::SwapChainFrame> mSwapchainFrames;
+  vk::Format                          mSwapchainFormat;
+  vk::Extent2D                        mSwapchainExtent;
 };
 
 #endif  // INC_ENGINE_H_

@@ -42,6 +42,34 @@ inline vk::DebugUtilsMessengerEXT make_debug_messenger(vk::Instance instance,
   return messenger;
 }
 
+inline void log_device_properties(const vk::PhysicalDevice& device) {
+  const vk::PhysicalDeviceProperties& properties = device.getProperties();
+
+  std::string deviceType = "";
+  switch (properties.deviceType) {
+    case (vk::PhysicalDeviceType::eCpu):
+      deviceType = "CPU";
+      break;
+    case (vk::PhysicalDeviceType::eDiscreteGpu):
+      deviceType = "discrete CPU";
+      break;
+    case (vk::PhysicalDeviceType::eVirtualGpu):
+      deviceType = "virtual GPU";
+      break;
+    case (vk::PhysicalDeviceType::eIntegratedGpu):
+      deviceType = "integrated GPU";
+      break;
+    case (vk::PhysicalDeviceType::eOther):
+    default:
+      deviceType = "other";
+      break;
+  }
+  printf("Device name: %s\n"
+         "Device type: %s\n",
+         properties.deviceName.data(),
+         deviceType.c_str());
+}
+
 inline std::vector<std::string> log_transform_bits(
   vk::SurfaceTransformFlagsKHR bits) {
   std::vector<std::string> result;
