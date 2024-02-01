@@ -181,8 +181,8 @@ inline SwapChainBundle create_swapchain(
     1,
     vk::ImageUsageFlagBits::eColorAttachment);
 
-  vkUtils::QueueFamilyIndices indices =
-    vkUtils::findQueueFamilies(physicalDevice, surface, debug);
+  vkUtil::QueueFamilyIndices indices =
+    vkUtil::findQueueFamilies(physicalDevice, surface, debug);
   uint32_t queueFamilyIndices[] = {
     indices.graphicsFamily.value(),
     indices.presentFamily.value() };

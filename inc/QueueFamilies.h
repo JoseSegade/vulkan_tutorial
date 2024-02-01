@@ -6,7 +6,7 @@
 #include <vector>
 #include <optional>
 
-namespace vkUtils {
+namespace vkUtil {
 
 struct QueueFamilyIndices {
   std::optional<uint32_t> graphicsFamily;
@@ -59,7 +59,7 @@ inline QueueFamilyIndices findQueueFamilies(
   return indices;
 }
 
-}  // namespace vkUtils
+}  // namespace vkUtil
 
 #endif  // INC_QUEUEFAMILIES_H_
 

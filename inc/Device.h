@@ -97,8 +97,8 @@ inline vk::Device create_logical_device(
   vk::PhysicalDevice physicalDevice,
   vk::SurfaceKHR surface,
   bool debug) {
-  vkUtils::QueueFamilyIndices indices =
-    vkUtils::findQueueFamilies(physicalDevice, surface, debug);
+  vkUtil::QueueFamilyIndices indices =
+    vkUtil::findQueueFamilies(physicalDevice, surface, debug);
 
   std::vector<uint32_t> uniqueIndices;
   uniqueIndices.push_back(indices.graphicsFamily.value());
@@ -155,8 +155,8 @@ inline std::array<vk::Queue, 2> get_queue(vk::PhysicalDevice physicalDevice,
                                         vk::Device device,
                                         vk::SurfaceKHR surface,
                                         bool debug) {
-  vkUtils::QueueFamilyIndices indices =
-    vkUtils::findQueueFamilies(physicalDevice, surface, debug);
+  vkUtil::QueueFamilyIndices indices =
+    vkUtil::findQueueFamilies(physicalDevice, surface, debug);
 
   std::array queues = {
     device.getQueue(indices.graphicsFamily.value(), 0),

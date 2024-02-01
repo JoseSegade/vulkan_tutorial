@@ -3,6 +3,7 @@
 #define INC_INSTANCE_H_
 
 #include "Common.h"
+#include <vector>
 
 namespace vkInit {
 

@@ -9,19 +9,23 @@
 
 class Engine {
  public:
-  void init();
+  void init(
+    uint32_t width, uint32_t height, GLFWwindow* window, bool debugMode);
   void destroy();
+  void render();
 
  private:
-  void build_glfw_window();
   void make_instance();
   void make_device();
   void make_pipeline();
+  void finalize_setup();
+  void record_draw_commands(vk::CommandBuffer commandBuffer,
+                            uint32_t imageIndex);
 
-  bool                       mHasDebug       = true;
+  bool                       mHasDebug       = false;
 
-  uint32_t                   mWidth          = 800;
-  uint32_t                   mHeight         = 600;
+  uint32_t                   mWidth          = 1;
+  uint32_t                   mHeight         = 1;
 
   GLFWwindow*                mWindow         = nullptr;
 
@@ -42,6 +46,13 @@ class Engine {
   vk::PipelineLayout                  mPipelineLayout;
   vk::RenderPass                      mRenderPass;
   vk::Pipeline                        mGraphicsPipeline;
+
+  vk::CommandPool                     mCommandPool;
+  vk::CommandBuffer                   mMainCommandBuffer;
+
+  vk::Fence                           mInFlightFence;
+  vk::Semaphore                       mImageAvailable;
+  vk::Semaphore                       mRenderFinished;
 };
 
 #endif  // INC_ENGINE_H_

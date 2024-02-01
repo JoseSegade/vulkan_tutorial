@@ -5,10 +5,14 @@
 #include "Common.h"
 
 namespace vkUtil {
+
 struct SwapChainFrame {
-  vk::Image     image;
-  vk::ImageView imageView;
+  vk::Image         image;
+  vk::ImageView     imageView;
+  vk::Framebuffer   framebuffer;
+  vk::CommandBuffer commandBuffer;
 };
-}
+
+}  // namespace vkUtil
 
 #endif  // INC_FRAME_H_

@@ -1,10 +1,11 @@
 // Copyright (c) 2024 Meerkat
 
-#include "../inc/Engine.h"
+#include "../inc/App.h"
 
 int main() {
-  Engine engine{};
-  engine.init();
-  engine.destroy();
+  App* app = new App(800, 800, true);
+  app->run();
+  delete app;
+
   return 0;
 }
