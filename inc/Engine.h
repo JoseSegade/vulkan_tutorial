@@ -50,9 +50,8 @@ class Engine {
   vk::CommandPool                     mCommandPool;
   vk::CommandBuffer                   mMainCommandBuffer;
 
-  vk::Fence                           mInFlightFence;
-  vk::Semaphore                       mImageAvailable;
-  vk::Semaphore                       mRenderFinished;
+  uint32_t                            mMaxFramesInFlight;
+  uint32_t                            mFrameNumber;
 };
 
 #endif  // INC_ENGINE_H_
