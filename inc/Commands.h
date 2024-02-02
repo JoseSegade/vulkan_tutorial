@@ -41,7 +41,7 @@ inline vk::CommandPool make_command_pool(
   return cp;
 }
 
-inline vk::CommandBuffer make_command_buffers(
+inline void make_frame_command_buffers(
   CommandBufferInputChunk* input,
   bool debug) {
   vk::CommandBufferAllocateInfo allocInfo {};
@@ -58,6 +58,15 @@ inline vk::CommandBuffer make_command_buffers(
              i, err.what());
     }
   }
+}
+
+inline vk::CommandBuffer make_command_buffer(
+  CommandBufferInputChunk* input,
+  bool debug) {
+  vk::CommandBufferAllocateInfo allocInfo {};
+  allocInfo.commandPool        = input->commandPool;
+  allocInfo.level              = vk::CommandBufferLevel::ePrimary;
+  allocInfo.commandBufferCount = 1;
 
   vk::CommandBuffer mcb {};
   try {

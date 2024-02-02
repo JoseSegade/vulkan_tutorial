@@ -24,7 +24,7 @@ void App::build_glfw_window(uint32_t width, uint32_t height, bool debug) {
 
   // No api, vulkan will be linked later
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
   mWindow = glfwCreateWindow(width, height, "Engine", nullptr, nullptr);
 

@@ -95,6 +95,10 @@ find_library(VULKAN_LIB
              NOT_DEFAULT_PATH
 )
 
-target_link_libraries(VulkanTutorial ${VULKAN_LIB} glfw glm)
+target_link_libraries(${PROJECT_NAME}
+  ${VULKAN_LIB}
+  glfw
+  glm
+)
 
 add_dependencies(${PROJECT_NAME} build_shaders)

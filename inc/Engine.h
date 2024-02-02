@@ -18,8 +18,13 @@ class Engine {
  private:
   void make_instance();
   void make_device();
+  void make_swapchain();
+  void recreate_swapchain();
+  void cleanup_swapchain();
   void make_pipeline();
   void finalize_setup();
+  void make_framebuffers();
+  void make_frame_sync_objects();
   void record_draw_commands(vk::CommandBuffer commandBuffer,
                             uint32_t imageIndex, Scene* scene);
 

@@ -43,14 +43,8 @@ void Engine::destroy() {
   mDevice.destroyPipelineLayout(mPipelineLayout);
   mDevice.destroyRenderPass(mRenderPass);
 
-  for (const vkUtil::SwapChainFrame& f : mSwapchainFrames) {
-    mDevice.destroyImageView(f.imageView);
-    mDevice.destroyFramebuffer(f.framebuffer);
-    mDevice.destroyFence(f.inFlight);
-    mDevice.destroySemaphore(f.imageAvailable);
-    mDevice.destroySemaphore(f.renderFinished);
-  }
-  mDevice.destroySwapchainKHR(mSwapchain);
+  cleanup_swapchain();
+
   mDevice.destroy();
   mInstance.destroySurfaceKHR(mSurface);
 
@@ -96,16 +90,46 @@ void Engine::make_device() {
     vkInit::get_queue(mPhysicalDevice, mDevice, mSurface, mHasDebug);
   mGraphicsQueue = queues[0];
   mPresentQueue  = queues[1];
+
+  make_swapchain();
+
+  mFrameNumber = 0;
+}
+
+void Engine::make_swapchain() {
   vkInit::SwapChainBundle bundle = vkInit::create_swapchain(
     mPhysicalDevice, mDevice, mSurface, mWidth, mHeight, mHasDebug);
-
   mSwapchain       = bundle.swapchain;
   mSwapchainFrames = bundle.frames;
   mSwapchainFormat = bundle.format;
   mSwapchainExtent = bundle.extent;
 
   mMaxFramesInFlight = static_cast<uint32_t>(mSwapchainFrames.size());
-  mFrameNumber = 0;
+}
+
+void Engine::recreate_swapchain() {
+  int32_t w = 0;
+  int32_t h = 0;
+  while (w == 0 || h == 0) {
+    glfwGetFramebufferSize(mWindow, &w, &h);
+    glfwWaitEvents();
+  }
+  mWidth = w;
+  mHeight = h;
+
+  mDevice.waitIdle();
+
+  cleanup_swapchain();
+  make_swapchain();
+  make_framebuffers();
+  make_frame_sync_objects();
+
+  vkInit::CommandBufferInputChunk commandBufferInput{};
+  commandBufferInput.device      = mDevice;
+  commandBufferInput.frames      = &mSwapchainFrames;
+  commandBufferInput.commandPool = mCommandPool;
+
+  vkInit::make_frame_command_buffers(&commandBufferInput, mHasDebug);
 }
 
 void Engine::make_pipeline() {
@@ -125,12 +149,7 @@ void Engine::make_pipeline() {
 }
 
 void Engine::finalize_setup() {
-  vkInit::FramebufferInput framebufferInput{};
-  framebufferInput.device          = mDevice;
-  framebufferInput.renderPass      = mRenderPass;
-  framebufferInput.swapchainExtent = mSwapchainExtent;
-
-  vkInit::make_framebuffers(framebufferInput, &mSwapchainFrames, mHasDebug);
+  make_framebuffers();
 
   mCommandPool =
     vkInit::make_command_pool(mDevice, mPhysicalDevice, mSurface, mHasDebug);
@@ -141,8 +160,22 @@ void Engine::finalize_setup() {
   commandBufferInput.commandPool = mCommandPool;
 
   mMainCommandBuffer =
-    vkInit::make_command_buffers(&commandBufferInput, mHasDebug);
+    vkInit::make_command_buffer(&commandBufferInput, mHasDebug);
+  vkInit::make_frame_command_buffers(&commandBufferInput, mHasDebug);
 
+  make_frame_sync_objects();
+}
+
+void Engine::make_framebuffers() {
+  vkInit::FramebufferInput framebufferInput{};
+  framebufferInput.device          = mDevice;
+  framebufferInput.renderPass      = mRenderPass;
+  framebufferInput.swapchainExtent = mSwapchainExtent;
+
+  vkInit::make_framebuffers(framebufferInput, &mSwapchainFrames, mHasDebug);
+}
+
+void Engine::make_frame_sync_objects() {
   for (vkUtil::SwapChainFrame& f : mSwapchainFrames) {
     f.inFlight = vkInit::make_fence(mDevice, mHasDebug);
     f.imageAvailable = vkInit::make_semaphore(mDevice, mHasDebug);
@@ -205,12 +238,17 @@ void Engine::render(Scene* scene) {
   mDevice.waitForFences(
     1, &mSwapchainFrames[mFrameNumber].inFlight, VK_TRUE, UINT64_MAX);
 
-  uint32_t imageIndex =
-    mDevice.acquireNextImageKHR(
-      mSwapchain, UINT64_MAX,
-      mSwapchainFrames[mFrameNumber].imageAvailable, nullptr).value;
-
-  mDevice.resetFences(1, &mSwapchainFrames[mFrameNumber].inFlight);
+  uint32_t imageIndex;
+  try {
+    vk::ResultValue acquire =
+      mDevice.acquireNextImageKHR(
+        mSwapchain, UINT64_MAX,
+        mSwapchainFrames[mFrameNumber].imageAvailable, nullptr);
+    imageIndex = acquire.value;
+  } catch (vk::OutOfDateKHRError) {
+    recreate_swapchain();
+    return;
+  }
 
   vk::CommandBuffer commandBuffer =
     mSwapchainFrames[mFrameNumber].commandBuffer;
@@ -233,6 +271,8 @@ void Engine::render(Scene* scene) {
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores = signalSemaphores;
 
+  mDevice.resetFences(1, &mSwapchainFrames[mFrameNumber].inFlight);
+
   try {
     mGraphicsQueue.submit(submitInfo, mSwapchainFrames[mFrameNumber].inFlight);
   } catch (vk::SystemError err) {
@@ -250,7 +290,30 @@ void Engine::render(Scene* scene) {
   presentInfo.pSwapchains = swapchains;
   presentInfo.pImageIndices = &imageIndex;
 
-  mPresentQueue.presentKHR(presentInfo);
+  vk::Result present;
+  try {
+    present = mPresentQueue.presentKHR(presentInfo);
+  } catch (vk::OutOfDateKHRError err) {
+    present = vk::Result::eErrorOutOfDateKHR;
+  }
+
+  if (present == vk::Result::eErrorOutOfDateKHR
+      || present == vk::Result::eSuboptimalKHR) {
+    printf("Recreating...\n");
+    recreate_swapchain();
+    return;
+  }
 
   mFrameNumber = (mFrameNumber + 1) % mMaxFramesInFlight;
+}
+
+void Engine::cleanup_swapchain() {
+  for (const vkUtil::SwapChainFrame& f : mSwapchainFrames) {
+    mDevice.destroyImageView(f.imageView);
+    mDevice.destroyFramebuffer(f.framebuffer);
+    mDevice.destroyFence(f.inFlight);
+    mDevice.destroySemaphore(f.imageAvailable);
+    mDevice.destroySemaphore(f.renderFinished);
+  }
+  mDevice.destroySwapchainKHR(mSwapchain);
 }
