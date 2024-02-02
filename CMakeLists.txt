@@ -40,8 +40,12 @@ endif()
 if(NOT EXISTS ${EXT_DIR}/glfw/CMakeLists.txt)
   message(FATAL_ERROR "The glfw submodule was not downloaded! GIT_SUBMODULE was truned off or failed. Please update submodules and try again.")
 endif()
+if(NOT EXISTS ${EXT_DIR}/glm/CMakeLists.txt)
+  message(FATAL_ERROR "The glm submodule was not downloaded! GIT_SUBMODULE was truned off or failed. Please update submodules and try again.")
+endif()
 
 add_subdirectory("ext/glfw")
+add_subdirectory("ext/glm")
 
 if(NOT DEFINED {VULKAN_SDK})
   if(NOT DEFINED ENV{VULKAN_SDK})
@@ -80,6 +84,7 @@ find_path(VULKAN_INC vulkan/vulkan.h
 target_include_directories(${PROJECT_NAME}
   PUBLIC
   "ext/glfw"
+  "ext/glm"
   ${VULKAN_INC}
 )
 
@@ -90,6 +95,6 @@ find_library(VULKAN_LIB
              NOT_DEFAULT_PATH
 )
 
-target_link_libraries(VulkanTutorial ${VULKAN_LIB} glfw)
+target_link_libraries(VulkanTutorial ${VULKAN_LIB} glfw glm)
 
 add_dependencies(${PROJECT_NAME} build_shaders)

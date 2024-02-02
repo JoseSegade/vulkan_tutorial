@@ -4,6 +4,7 @@
 
 #include "Common.h"
 #include "Engine.h"
+#include "Scene.h"
 
 class App {
  public:
@@ -17,6 +18,7 @@ class App {
 
   Engine*     mGraphicsEngine = nullptr;
   GLFWwindow* mWindow         = nullptr;
+  Scene*      mScene          = nullptr;
 
   double      mLastTime    = 0.0;
   double      mCurrentTime = 0.0;

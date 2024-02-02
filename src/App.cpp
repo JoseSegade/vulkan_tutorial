@@ -8,9 +8,12 @@ App::App(uint32_t width, uint32_t height, bool debug) {
   build_glfw_window(width, height, debug);
   mGraphicsEngine = new Engine();
   mGraphicsEngine->init(width, height, mWindow, debug);
+  mScene = new Scene();
+  mScene->Init();
 }
 
 App::~App() {
+  delete mScene;
   mGraphicsEngine->destroy();
   delete mGraphicsEngine;
   glfwTerminate();
@@ -39,7 +42,7 @@ void App::build_glfw_window(uint32_t width, uint32_t height, bool debug) {
 void App::run() {
   while (!glfwWindowShouldClose(mWindow)) {
     glfwPollEvents();
-    mGraphicsEngine->render();
+    mGraphicsEngine->render(mScene);
     calculate_frame_rate();
   }
 }

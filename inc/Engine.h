@@ -5,6 +5,7 @@
 
 #include "Common.h"
 #include "Frame.h"
+#include "Scene.h"
 #include <vector>
 
 class Engine {
@@ -12,7 +13,7 @@ class Engine {
   void init(
     uint32_t width, uint32_t height, GLFWwindow* window, bool debugMode);
   void destroy();
-  void render();
+  void render(Scene* scene);
 
  private:
   void make_instance();
@@ -20,7 +21,7 @@ class Engine {
   void make_pipeline();
   void finalize_setup();
   void record_draw_commands(vk::CommandBuffer commandBuffer,
-                            uint32_t imageIndex);
+                            uint32_t imageIndex, Scene* scene);
 
   bool                       mHasDebug       = false;
 

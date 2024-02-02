@@ -4,6 +4,7 @@
 
 #include "Common.h"
 #include "Shaders.h"
+#include "RenderStructs.h"
 #include <vector>
 #include <string>
 
@@ -25,10 +26,16 @@ struct GraphicsPipelineOutBundle {
 
 inline vk::PipelineLayout make_pipeline_layout(
   vk::Device device, bool debug) {
+  vk::PushConstantRange pushConstantInfo {};
+  pushConstantInfo.offset     = 0;
+  pushConstantInfo.size       = sizeof(vkUtil::ObjectData);
+  pushConstantInfo.stageFlags = vk::ShaderStageFlagBits::eVertex;
+
   vk::PipelineLayoutCreateInfo layoutInfo {};
-  layoutInfo.flags = vk::PipelineLayoutCreateFlags();
-  layoutInfo.setLayoutCount = 0;
-  layoutInfo.pushConstantRangeCount = 0;
+  layoutInfo.flags                  = vk::PipelineLayoutCreateFlags();
+  layoutInfo.setLayoutCount         = 0;
+  layoutInfo.pushConstantRangeCount = 1;
+  layoutInfo.pPushConstantRanges    = &pushConstantInfo;
 
   vk::PipelineLayout pl {};
   try {
