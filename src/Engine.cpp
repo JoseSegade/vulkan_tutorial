@@ -24,6 +24,7 @@ void Engine::init(
   make_device();
   make_pipeline();
   finalize_setup();
+  make_assets();
 
   if (mHasDebug) {
     printf("Initializing app done.\n");
@@ -44,6 +45,8 @@ void Engine::destroy() {
   mDevice.destroyRenderPass(mRenderPass);
 
   cleanup_swapchain();
+
+  delete mTriangleMesh;
 
   mDevice.destroy();
   mInstance.destroySurfaceKHR(mSurface);
@@ -166,6 +169,19 @@ void Engine::finalize_setup() {
   make_frame_sync_objects();
 }
 
+void Engine::make_assets() {
+  mTriangleMesh = new TriangleMesh();
+  mTriangleMesh->init(mPhysicalDevice, mDevice);
+}
+
+void Engine::prepare_scene(vk::CommandBuffer commandBuffer) {
+  vk::Buffer vertexBuffers[] = {
+    mTriangleMesh->getVertexBuffer().buffer };
+
+  vk::DeviceSize offsets[] = { 0 };
+  commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);
+}
+
 void Engine::make_framebuffers() {
   vkInit::FramebufferInput framebufferInput{};
   framebufferInput.device          = mDevice;
@@ -210,6 +226,8 @@ void Engine::record_draw_commands(vk::CommandBuffer commandBuffer,
 
   commandBuffer.bindPipeline(
     vk::PipelineBindPoint::eGraphics, mGraphicsPipeline);
+
+  prepare_scene(commandBuffer);
 
   for (const glm::vec3& position : scene->GetTrianglePositions()) {
     glm::mat4 model = glm::translate(glm::mat4(1.0f), position);

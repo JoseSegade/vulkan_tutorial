@@ -5,6 +5,7 @@
 #include "Common.h"
 #include "Shaders.h"
 #include "RenderStructs.h"
+#include "Mesh.h"
 #include <vector>
 #include <string>
 
@@ -97,10 +98,19 @@ inline GraphicsPipelineOutBundle make_graphics_pipeline(
   bool debug) {
   GraphicsPipelineOutBundle out {};
 
+  vk::VertexInputBindingDescription bindingDescription =
+    vkMesh::getPosColorBindingDescription();
+  std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions =
+    vkMesh::getPosColorAttributeDescriptions();
+
   vk::PipelineVertexInputStateCreateInfo vertexInputInfo {};
   vertexInputInfo.flags = vk::PipelineVertexInputStateCreateFlags();
-  vertexInputInfo.vertexBindingDescriptionCount   = 0;
-  vertexInputInfo.vertexAttributeDescriptionCount = 0;
+  vertexInputInfo.vertexBindingDescriptionCount   = 1;
+  vertexInputInfo.pVertexBindingDescriptions      = &bindingDescription;
+  vertexInputInfo.vertexAttributeDescriptionCount =
+    static_cast<uint32_t>(attributeDescriptions.size());
+  vertexInputInfo.pVertexAttributeDescriptions    =
+    attributeDescriptions.data();
 
   vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo {};
   inputAssemblyInfo.flags    = vk::PipelineInputAssemblyStateCreateFlags();
@@ -173,8 +183,9 @@ inline GraphicsPipelineOutBundle make_graphics_pipeline(
   rasterizer.depthBiasEnable         = VK_FALSE;
 
   vk::PipelineMultisampleStateCreateInfo multisampling {};
-  multisampling.flags = vk::PipelineMultisampleStateCreateFlags();
-  multisampling.sampleShadingEnable = VK_FALSE;
+  multisampling.flags =
+    vk::PipelineMultisampleStateCreateFlags();
+  multisampling.sampleShadingEnable  = VK_FALSE;
   multisampling.rasterizationSamples = vk::SampleCountFlagBits::e1;
 
   vk::PipelineColorBlendAttachmentState colorBlendAttachment {};

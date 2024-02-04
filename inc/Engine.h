@@ -6,6 +6,7 @@
 #include "Common.h"
 #include "Frame.h"
 #include "Scene.h"
+#include "TriangleMesh.h"
 #include <vector>
 
 class Engine {
@@ -25,6 +26,8 @@ class Engine {
   void finalize_setup();
   void make_framebuffers();
   void make_frame_sync_objects();
+  void make_assets();
+  void prepare_scene(vk::CommandBuffer commandBuffer);
   void record_draw_commands(vk::CommandBuffer commandBuffer,
                             uint32_t imageIndex, Scene* scene);
 
@@ -58,6 +61,8 @@ class Engine {
 
   uint32_t                            mMaxFramesInFlight;
   uint32_t                            mFrameNumber;
+
+  TriangleMesh* mTriangleMesh = nullptr;
 };
 
 #endif  // INC_ENGINE_H_
