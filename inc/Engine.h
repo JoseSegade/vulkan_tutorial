@@ -5,10 +5,10 @@
 
 #include "Common.h"
 #include "Frame.h"
-#include "Scene.h"
-#include "TriangleMesh.h"
+#include "VertexMenagerie.h"
 #include <vector>
 
+class Scene;
 class Engine {
  public:
   void init(
@@ -62,7 +62,7 @@ class Engine {
   uint32_t                            mMaxFramesInFlight;
   uint32_t                            mFrameNumber;
 
-  TriangleMesh* mTriangleMesh = nullptr;
+  VertexMenagerie* mMeshes = nullptr;
 };
 
 #endif  // INC_ENGINE_H_

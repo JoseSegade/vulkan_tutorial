@@ -7,6 +7,12 @@
 
 namespace vkMesh {
 
+enum class MeshTypes : uint32_t {
+  TRIANGLE,
+  SQUARE,
+  STAR
+};
+
 inline vk::VertexInputBindingDescription getPosColorBindingDescription() {
   vk::VertexInputBindingDescription bindingDescription {};
   bindingDescription.binding = 0;

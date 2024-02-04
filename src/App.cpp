@@ -9,7 +9,7 @@ App::App(uint32_t width, uint32_t height, bool debug) {
   mGraphicsEngine = new Engine();
   mGraphicsEngine->init(width, height, mWindow, debug);
   mScene = new Scene();
-  mScene->Init();
+  mScene->init();
 }
 
 App::~App() {

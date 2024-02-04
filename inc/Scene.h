@@ -3,17 +3,20 @@
 #define INC_SCENE_H_
 
 #include "Common.h"
-#include <vector>
 
 class Scene {
  public:
   Scene();
 
-  void Init();
-  const std::vector<glm::vec3>& GetTrianglePositions();
+  void init();
+  const std::vector<glm::vec3>& getTrianglePositions();
+  const std::vector<glm::vec3>& getSquarePositions();
+  const std::vector<glm::vec3>& getStarPositions();
 
  private:
   std::vector<glm::vec3> mTrianglePositions {};
+  std::vector<glm::vec3> mSquarePositions {};
+  std::vector<glm::vec3> mStarPositions {};
 };
 
 #endif  // INC_SCENE_H_

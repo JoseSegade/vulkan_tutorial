@@ -17,7 +17,7 @@ void TriangleMesh::init(vk::PhysicalDevice physicalDevice, vk::Device device) {
      0.05f,  0.05f, 0.0f, 1.0f, 0.0f,
     -0.05f,  0.05f, 0.0f, 1.0f, 0.0f } };
 
-  vkUtil::BufferInput inputChunk;
+  vkUtil::BufferInputChunk inputChunk;
   inputChunk.device         = device;
   inputChunk.physicalDevice = physicalDevice;
   inputChunk.size           = sizeof(float) * vertices.size();

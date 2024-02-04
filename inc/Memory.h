@@ -6,7 +6,7 @@
 
 namespace vkUtil {
 
-struct BufferInput {
+struct BufferInputChunk {
   size_t               size;
   vk::BufferUsageFlags usage;
   vk::Device           device;
@@ -43,7 +43,7 @@ inline uint32_t findMemoryTypeIndex(
 }
 
 inline void allocateBufferMemory(Buffer* buffer,
-                                 const BufferInput& input) {
+                                 const BufferInputChunk& input) {
   vk::MemoryRequirements memoryRequirements =
     input.device.getBufferMemoryRequirements(buffer->buffer);
 
@@ -58,7 +58,7 @@ inline void allocateBufferMemory(Buffer* buffer,
   input.device.bindBufferMemory(buffer->buffer, buffer->bufferMemory, 0);
 }
 
-inline Buffer createBuffer(const BufferInput& input) {
+inline Buffer createBuffer(const BufferInputChunk& input) {
   vk::BufferCreateInfo bufferInfo {};
   bufferInfo.flags = vk::BufferCreateFlags();
   bufferInfo.size = input.size;
