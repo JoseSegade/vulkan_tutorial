@@ -7,10 +7,11 @@
 namespace vkUtil {
 
 struct BufferInputChunk {
-  size_t               size;
-  vk::BufferUsageFlags usage;
-  vk::Device           device;
-  vk::PhysicalDevice   physicalDevice;
+  size_t                  size;
+  vk::BufferUsageFlags    usage;
+  vk::Device              device;
+  vk::PhysicalDevice      physicalDevice;
+  vk::MemoryPropertyFlags memoryProperties;
 };
 
 struct Buffer {
@@ -48,11 +49,10 @@ inline void allocateBufferMemory(Buffer* buffer,
     input.device.getBufferMemoryRequirements(buffer->buffer);
 
   vk::MemoryAllocateInfo allocInfo {};
-  allocInfo.allocationSize = memoryRequirements.size;
+  allocInfo.allocationSize  = memoryRequirements.size;
   allocInfo.memoryTypeIndex = findMemoryTypeIndex(
     input.physicalDevice, memoryRequirements.memoryTypeBits,
-    vk::MemoryPropertyFlagBits::eHostVisible
-    | vk::MemoryPropertyFlagBits::eHostCoherent);
+    input.memoryProperties);
 
   buffer->bufferMemory = input.device.allocateMemory(allocInfo);
   input.device.bindBufferMemory(buffer->buffer, buffer->bufferMemory, 0);
@@ -60,9 +60,9 @@ inline void allocateBufferMemory(Buffer* buffer,
 
 inline Buffer createBuffer(const BufferInputChunk& input) {
   vk::BufferCreateInfo bufferInfo {};
-  bufferInfo.flags = vk::BufferCreateFlags();
-  bufferInfo.size = input.size;
-  bufferInfo.usage = input.usage;
+  bufferInfo.flags       = vk::BufferCreateFlags();
+  bufferInfo.size        = input.size;
+  bufferInfo.usage       = input.usage;
   bufferInfo.sharingMode = vk::SharingMode::eExclusive;
 
   Buffer buffer {};
@@ -71,6 +71,30 @@ inline Buffer createBuffer(const BufferInputChunk& input) {
   allocateBufferMemory(&buffer, input);
 
   return buffer;
+}
+
+inline void copyBuffer(const Buffer* srcBuffer, Buffer* dstBuffer,
+                       vk::DeviceSize size, vk::Queue queue,
+                       vk::CommandBuffer commandBuffer) {
+  commandBuffer.reset();
+  vk::CommandBufferBeginInfo beginInfo {};
+  beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+  commandBuffer.begin(beginInfo);
+
+  vk::BufferCopy copyRegion{};
+  copyRegion.srcOffset = 0;
+  copyRegion.dstOffset = 0;
+  copyRegion.size      = size;
+  commandBuffer.copyBuffer(srcBuffer->buffer, dstBuffer->buffer,
+                           1, &copyRegion);
+
+  commandBuffer.end();
+
+  vk::SubmitInfo submitInfo {};
+  submitInfo.commandBufferCount = 1;
+  submitInfo.pCommandBuffers = &commandBuffer;
+  queue.submit(1, &submitInfo, nullptr);
+  queue.waitIdle();
 }
 
 }  // namespace vkUtil

@@ -10,11 +10,18 @@
 
 class VertexMenagerie {
  public:
+  struct FinalizationChunk {
+    vk::PhysicalDevice physicalDevice;
+    vk::Device         device;
+    vk::Queue          queue;
+    vk::CommandBuffer  commandBuffer;
+  };
+
   VertexMenagerie();
   ~VertexMenagerie();
   void init();
   void consume(vkMesh::MeshTypes type, const std::vector<float>& vertexData);
-  void finalize(vk::PhysicalDevice physicalDevice, vk::Device device);
+  void finalize(const FinalizationChunk& input);
   const vkUtil::Buffer& getVertexBuffer();
   uint32_t getOffset(vkMesh::MeshTypes type) const;
   uint32_t getSize(vkMesh::MeshTypes type) const;

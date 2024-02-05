@@ -196,7 +196,7 @@ void Engine::make_assets() {
     -0.02f, -0.025f, 0.0f, 0.0f, 1.0f,
     -0.03f,    0.0f, 0.0f, 0.0f, 1.0f,
     -0.02f, -0.025f, 0.0f, 0.0f, 1.0f,
-     0.0f,  -0.05f, 0.0f, 0.0f, 1.0f,
+     0.00f,  -0.05f, 0.0f, 0.0f, 1.0f,
      0.02f, -0.025f, 0.0f, 0.0f, 1.0f,
     -0.03f,    0.0f, 0.0f, 0.0f, 1.0f,
     -0.02f, -0.025f, 0.0f, 0.0f, 1.0f,
@@ -219,7 +219,13 @@ void Engine::make_assets() {
   type = vkMesh::MeshTypes::STAR;
   mMeshes->consume(type, vertices);
 
-  mMeshes->finalize(mPhysicalDevice, mDevice);
+  VertexMenagerie::FinalizationChunk finalizationChunk {};
+  finalizationChunk.physicalDevice = mPhysicalDevice;
+  finalizationChunk.device         = mDevice;
+  finalizationChunk.queue          = mGraphicsQueue;
+  finalizationChunk.commandBuffer  = mMainCommandBuffer;
+
+  mMeshes->finalize(finalizationChunk);
 }
 
 void Engine::prepare_scene(vk::CommandBuffer commandBuffer) {
