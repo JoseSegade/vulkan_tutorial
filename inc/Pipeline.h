@@ -12,11 +12,12 @@
 namespace vkInit {
 
 struct GraphicsPipelineInBundle {
-  vk::Device   device;
-  std::string  vertexFilepath;
-  std::string  fragmenFilepath;
-  vk::Extent2D extent;
-  vk::Format   swapchainFormat;
+  vk::Device              device;
+  std::string             vertexFilepath;
+  std::string             fragmenFilepath;
+  vk::Extent2D            extent;
+  vk::Format              swapchainFormat;
+  vk::DescriptorSetLayout descriptorSetLayout;
 };
 
 struct GraphicsPipelineOutBundle {
@@ -26,7 +27,7 @@ struct GraphicsPipelineOutBundle {
 };
 
 inline vk::PipelineLayout make_pipeline_layout(
-  vk::Device device, bool debug) {
+  vk::Device device, vk::DescriptorSetLayout layout, bool debug) {
   vk::PushConstantRange pushConstantInfo {};
   pushConstantInfo.offset     = 0;
   pushConstantInfo.size       = sizeof(vkUtil::ObjectData);
@@ -34,7 +35,8 @@ inline vk::PipelineLayout make_pipeline_layout(
 
   vk::PipelineLayoutCreateInfo layoutInfo {};
   layoutInfo.flags                  = vk::PipelineLayoutCreateFlags();
-  layoutInfo.setLayoutCount         = 0;
+  layoutInfo.setLayoutCount         = 1;
+  layoutInfo.pSetLayouts            = &layout;
   layoutInfo.pushConstantRangeCount = 1;
   layoutInfo.pPushConstantRanges    = &pushConstantInfo;
 
@@ -211,7 +213,9 @@ inline GraphicsPipelineOutBundle make_graphics_pipeline(
     printf("Creating pipeline layout...\n");
   }
   vk::PipelineLayout pipelineLayout =
-    make_pipeline_layout(specification.device, debug);
+    make_pipeline_layout(specification.device,
+                         specification.descriptorSetLayout,
+                         debug);
 
   if (debug) {
     printf("Creating render pass...\n");

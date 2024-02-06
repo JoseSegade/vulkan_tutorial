@@ -22,12 +22,14 @@ class Engine {
   void make_swapchain();
   void recreate_swapchain();
   void cleanup_swapchain();
+  void make_descriptor_set_layout();
   void make_pipeline();
   void finalize_setup();
   void make_framebuffers();
-  void make_frame_sync_objects();
+  void make_frame_resources();
   void make_assets();
   void prepare_scene(vk::CommandBuffer commandBuffer);
+  void prepare_frame(uint32_t imageIndex);
   void record_draw_commands(vk::CommandBuffer commandBuffer,
                             uint32_t imageIndex, Scene* scene);
 
@@ -51,6 +53,9 @@ class Engine {
   std::vector<vkUtil::SwapChainFrame> mSwapchainFrames;
   vk::Format                          mSwapchainFormat;
   vk::Extent2D                        mSwapchainExtent;
+
+  vk::DescriptorSetLayout             mDescriptorSetLayout;
+  vk::DescriptorPool                  mDescriptorPool;
 
   vk::PipelineLayout                  mPipelineLayout;
   vk::RenderPass                      mRenderPass;
