@@ -387,7 +387,7 @@ void Engine::render_objects(vk::CommandBuffer commandBuffer,
   uint32_t vertexCount = mMeshes->getSize(objType);
   mMaterials[objType]->use(commandBuffer, mPipelineLayout);
   commandBuffer.draw(vertexCount, instanceCount, firstVertex, *startInstance);
-  startInstance += instanceCount;
+  *startInstance += instanceCount;
 }
 
 void Engine::record_draw_commands(vk::CommandBuffer commandBuffer,
