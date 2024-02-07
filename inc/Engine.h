@@ -29,7 +29,7 @@ class Engine {
   void make_frame_resources();
   void make_assets();
   void prepare_scene(vk::CommandBuffer commandBuffer);
-  void prepare_frame(uint32_t imageIndex);
+  void prepare_frame(uint32_t imageIndex, Scene* scene);
   void record_draw_commands(vk::CommandBuffer commandBuffer,
                             uint32_t imageIndex, Scene* scene);
 

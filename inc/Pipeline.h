@@ -28,17 +28,12 @@ struct GraphicsPipelineOutBundle {
 
 inline vk::PipelineLayout make_pipeline_layout(
   vk::Device device, vk::DescriptorSetLayout layout, bool debug) {
-  vk::PushConstantRange pushConstantInfo {};
-  pushConstantInfo.offset     = 0;
-  pushConstantInfo.size       = sizeof(vkUtil::ObjectData);
-  pushConstantInfo.stageFlags = vk::ShaderStageFlagBits::eVertex;
-
   vk::PipelineLayoutCreateInfo layoutInfo {};
   layoutInfo.flags                  = vk::PipelineLayoutCreateFlags();
   layoutInfo.setLayoutCount         = 1;
   layoutInfo.pSetLayouts            = &layout;
-  layoutInfo.pushConstantRangeCount = 1;
-  layoutInfo.pPushConstantRanges    = &pushConstantInfo;
+  layoutInfo.pushConstantRangeCount = 0;
+  layoutInfo.pPushConstantRanges    = nullptr;
 
   vk::PipelineLayout pl {};
   try {

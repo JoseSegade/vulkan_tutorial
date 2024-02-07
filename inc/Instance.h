@@ -87,7 +87,7 @@ inline vk::Instance make_instance(bool debug, const char* appname) {
            VK_API_VERSION_PATCH(version));
   }
 
-  version = VK_MAKE_API_VERSION(0, 1, 0, 0);
+  version = VK_MAKE_API_VERSION(0, 1, 1, 0);
 
   vk::ApplicationInfo appInfo = vk::ApplicationInfo(
     appname,

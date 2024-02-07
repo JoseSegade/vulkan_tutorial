@@ -142,9 +142,14 @@ void Engine::recreate_swapchain() {
 
 void Engine::make_descriptor_set_layout() {
   vkInit::DescriptorSetLayoutData bindings;
-  bindings.count = 1;
+  bindings.count = 2;
   bindings.indices.push_back(0);
   bindings.types.push_back(vk::DescriptorType::eUniformBuffer);
+  bindings.counts.push_back(1);
+  bindings.stages.push_back(vk::ShaderStageFlagBits::eVertex);
+
+  bindings.indices.push_back(1);
+  bindings.types.push_back(vk::DescriptorType::eStorageBuffer);
   bindings.counts.push_back(1);
   bindings.stages.push_back(vk::ShaderStageFlagBits::eVertex);
 
@@ -253,7 +258,7 @@ void Engine::prepare_scene(vk::CommandBuffer commandBuffer) {
   commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);
 }
 
-void Engine::prepare_frame(uint32_t frameIndex) {
+void Engine::prepare_frame(uint32_t frameIndex, Scene* scene) {
   glm::vec3 eye    = {  1.0f,  0.0f, -1.0f };
   glm::vec3 center = {  0.0f,  0.0f,  0.0f };
   glm::vec3 up     = {  0.0f,  0.0f, -1.0f };
@@ -276,6 +281,23 @@ void Engine::prepare_frame(uint32_t frameIndex) {
   memcpy(frame.cameraDataWriteLocation,
          &(frame.cameraData),
          sizeof(vkUtil::UniformBufferObject));
+
+  size_t i = 0;
+  for (const glm::vec3& position : scene->getSquarePositions()) {
+    frame.modelTransforms[i] = glm::translate(glm::mat4(1.0f), position);
+    ++i;
+  }
+  for (const glm::vec3& position : scene->getTrianglePositions()) {
+    frame.modelTransforms[i] = glm::translate(glm::mat4(1.0f), position);
+    ++i;
+  }
+  for (const glm::vec3& position : scene->getStarPositions()) {
+    frame.modelTransforms[i] = glm::translate(glm::mat4(1.0f), position);
+    ++i;
+  }
+  memcpy(frame.modelBufferWriteLocation,
+         frame.modelTransforms.data(),
+         i * sizeof(glm::mat4));
 
   frame.write_descriptor_set(mDevice);
 }
@@ -304,7 +326,7 @@ void Engine::make_frame_resources() {
     f.imageAvailable = vkInit::make_semaphore(mDevice, mHasDebug);
     f.renderFinished = vkInit::make_semaphore(mDevice, mHasDebug);
 
-    f.make_ubo_resources(mPhysicalDevice, mDevice);
+    f.make_descriptor_resources(mPhysicalDevice, mDevice);
 
     f.descriptorSet = vkInit::allocate_descriptor_set(
        mDevice, mDescriptorPool, mDescriptorSetLayout, mHasDebug);
@@ -349,41 +371,22 @@ void Engine::record_draw_commands(vk::CommandBuffer commandBuffer,
   {
     uint32_t firstVertex = mMeshes->getOffset(vkMesh::MeshTypes::TRIANGLE);
     uint32_t vertexCount = mMeshes->getSize(vkMesh::MeshTypes::TRIANGLE);
-    for (const glm::vec3& position : scene->getTrianglePositions()) {
-      glm::mat4 model = glm::translate(glm::mat4(1.0f), position);
-      vkUtil::ObjectData objectData {};
-      objectData.model = model;
-
-      commandBuffer.pushConstants(
-        mPipelineLayout, vk::ShaderStageFlagBits::eVertex,
-        0, sizeof(objectData), &objectData);
-      commandBuffer.draw(vertexCount, 1, firstVertex, 0);
-    }
-
+    uint32_t startInstance = 0;
+    uint32_t instanceCount =
+      static_cast<uint32_t>(scene->getTrianglePositions().size());
+    commandBuffer.draw(vertexCount, instanceCount, firstVertex, startInstance);
     firstVertex = mMeshes->getOffset(vkMesh::MeshTypes::SQUARE);
     vertexCount = mMeshes->getSize(vkMesh::MeshTypes::SQUARE);
-    for (const glm::vec3& position : scene->getSquarePositions()) {
-      glm::mat4 model = glm::translate(glm::mat4(1.0f), position);
-      vkUtil::ObjectData objectData {};
-      objectData.model = model;
-
-      commandBuffer.pushConstants(
-        mPipelineLayout, vk::ShaderStageFlagBits::eVertex,
-        0, sizeof(objectData), &objectData);
-      commandBuffer.draw(vertexCount, 1, firstVertex, 0);
-    }
+    startInstance += instanceCount;
+    instanceCount =
+      static_cast<uint32_t>(scene->getSquarePositions().size());
+    commandBuffer.draw(vertexCount, instanceCount, firstVertex, startInstance);
     firstVertex = mMeshes->getOffset(vkMesh::MeshTypes::STAR);
     vertexCount = mMeshes->getSize(vkMesh::MeshTypes::STAR);
-    for (const glm::vec3& position : scene->getStarPositions()) {
-      glm::mat4 model = glm::translate(glm::mat4(1.0f), position);
-      vkUtil::ObjectData objectData {};
-      objectData.model = model;
-
-      commandBuffer.pushConstants(
-        mPipelineLayout, vk::ShaderStageFlagBits::eVertex,
-        0, sizeof(objectData), &objectData);
-      commandBuffer.draw(vertexCount, 1, firstVertex, 0);
-    }
+    startInstance += instanceCount;
+    instanceCount =
+      static_cast<uint32_t>(scene->getStarPositions().size());
+    commandBuffer.draw(vertexCount, instanceCount, firstVertex, startInstance);
   }
 
   commandBuffer.endRenderPass();
@@ -418,7 +421,7 @@ void Engine::render(Scene* scene) {
     mSwapchainFrames[mFrameNumber].commandBuffer;
   commandBuffer.reset();
 
-  prepare_frame(imageIndex);
+  prepare_frame(imageIndex, scene);
 
   record_draw_commands(commandBuffer, imageIndex, scene);
 
@@ -484,6 +487,10 @@ void Engine::cleanup_swapchain() {
     mDevice.unmapMemory(f.cameraDataBuffer.bufferMemory);
     mDevice.freeMemory(f.cameraDataBuffer.bufferMemory);
     mDevice.destroyBuffer(f.cameraDataBuffer.buffer);
+
+    mDevice.unmapMemory(f.modelBuffer.bufferMemory);
+    mDevice.freeMemory(f.modelBuffer.bufferMemory);
+    mDevice.destroyBuffer(f.modelBuffer.buffer);
   }
   mDevice.destroySwapchainKHR(mSwapchain);
 
