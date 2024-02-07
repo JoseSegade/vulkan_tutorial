@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Meerkat
+// Copyright (c)
 #include "../inc/Engine.h"
 #include "../inc/Instance.h"
 #include "../inc/Logging.h"
@@ -24,7 +24,7 @@ void Engine::init(
 
   make_instance();
   make_device();
-  make_descriptor_set_layout();
+  make_descriptor_set_layouts();
   make_pipeline();
   finalize_setup();
   make_assets();
@@ -49,9 +49,16 @@ void Engine::destroy() {
 
   cleanup_swapchain();
 
-  mDevice.destroyDescriptorSetLayout(mDescriptorSetLayout);
+  mDevice.destroyDescriptorSetLayout(mFrameSetLayout);
 
   delete mMeshes;
+
+  for (const auto& [_, texture] : mMaterials) {
+    delete texture;
+  }
+
+  mDevice.destroyDescriptorSetLayout(mMeshSetLayout);
+  mDevice.destroyDescriptorPool(mMeshDescriptorPool);
 
   mDevice.destroy();
   mInstance.destroySurfaceKHR(mSurface);
@@ -140,31 +147,45 @@ void Engine::recreate_swapchain() {
   vkInit::make_frame_command_buffers(&commandBufferInput, mHasDebug);
 }
 
-void Engine::make_descriptor_set_layout() {
-  vkInit::DescriptorSetLayoutData bindings;
-  bindings.count = 2;
-  bindings.indices.push_back(0);
-  bindings.types.push_back(vk::DescriptorType::eUniformBuffer);
-  bindings.counts.push_back(1);
-  bindings.stages.push_back(vk::ShaderStageFlagBits::eVertex);
+void Engine::make_descriptor_set_layouts() {
+  {
+    vkInit::DescriptorSetLayoutData frameBindings;
+    frameBindings.count = 2;
+    frameBindings.indices.push_back(0);
+    frameBindings.types.push_back(vk::DescriptorType::eUniformBuffer);
+    frameBindings.counts.push_back(1);
+    frameBindings.stages.push_back(vk::ShaderStageFlagBits::eVertex);
 
-  bindings.indices.push_back(1);
-  bindings.types.push_back(vk::DescriptorType::eStorageBuffer);
-  bindings.counts.push_back(1);
-  bindings.stages.push_back(vk::ShaderStageFlagBits::eVertex);
+    frameBindings.indices.push_back(1);
+    frameBindings.types.push_back(vk::DescriptorType::eStorageBuffer);
+    frameBindings.counts.push_back(1);
+    frameBindings.stages.push_back(vk::ShaderStageFlagBits::eVertex);
 
-  mDescriptorSetLayout = vkInit::make_descriptor_set_layout(
-    mDevice, bindings, mHasDebug);
+    mFrameSetLayout = vkInit::make_descriptor_set_layout(
+      mDevice, frameBindings, mHasDebug);
+  }
+
+  {
+    vkInit::DescriptorSetLayoutData meshBindings;
+    meshBindings.count = 1;
+    meshBindings.indices.push_back(0);
+    meshBindings.types.push_back(vk::DescriptorType::eCombinedImageSampler);
+    meshBindings.counts.push_back(1);
+    meshBindings.stages.push_back(vk::ShaderStageFlagBits::eFragment);
+
+    mMeshSetLayout = vkInit::make_descriptor_set_layout(
+      mDevice, meshBindings, mHasDebug);
+  }
 }
 
 void Engine::make_pipeline() {
   vkInit::GraphicsPipelineInBundle specification {};
-  specification.device              = mDevice;
-  specification.vertexFilepath      = "./bin/shaders/default.vert.spv";
-  specification.fragmenFilepath     = "./bin/shaders/default.frag.spv";
-  specification.extent              = mSwapchainExtent;
-  specification.swapchainFormat     = mSwapchainFormat;
-  specification.descriptorSetLayout = mDescriptorSetLayout;
+  specification.device               = mDevice;
+  specification.vertexFilepath       = "./bin/shaders/default.vert.spv";
+  specification.fragmenFilepath      = "./bin/shaders/default.frag.spv";
+  specification.extent               = mSwapchainExtent;
+  specification.swapchainFormat      = mSwapchainFormat;
+  specification.descriptorSetLayouts = { mFrameSetLayout, mMeshSetLayout };
 
   vkInit::GraphicsPipelineOutBundle output =
     vkInit::make_graphics_pipeline(specification, mHasDebug);
@@ -196,48 +217,48 @@ void Engine::make_assets() {
   mMeshes = new VertexMenagerie();
 
   std::vector<float> vertices = { {
-     0.00f, -0.05f, 0.0f, 1.0f, 0.0f,
-     0.05f,  0.05f, 0.0f, 1.0f, 0.0f,
-    -0.05f,  0.05f, 0.0f, 1.0f, 0.0f } };
+     0.00f, -0.05f, 0.0f, 1.0f, 0.0f, 0.5f, 0.0f,
+     0.05f,  0.05f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
+    -0.05f,  0.05f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f } };
 
   vkMesh::MeshTypes type = vkMesh::MeshTypes::TRIANGLE;
   mMeshes->consume(type, vertices);
 
   vertices = { {
-    -0.05f,  0.05f, 1.0f, 0.0f, 0.0f,
-    -0.05f, -0.05f, 1.0f, 0.0f, 0.0f,
-     0.05f, -0.05f, 1.0f, 0.0f, 0.0f,
-     0.05f, -0.05f, 1.0f, 0.0f, 0.0f,
-     0.05f,  0.05f, 1.0f, 0.0f, 0.0f,
-    -0.05f,  0.05f, 1.0f, 0.0f, 0.0f } };
+    -0.05f,  0.05f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+    -0.05f, -0.05f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+     0.05f, -0.05f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+     0.05f, -0.05f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+     0.05f,  0.05f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
+    -0.05f,  0.05f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f } };
   type = vkMesh::MeshTypes::SQUARE;
   mMeshes->consume(type, vertices);
 
   vertices = { {
-    -0.05f, -0.025f, 0.0f, 0.0f, 1.0f,
-    -0.02f, -0.025f, 0.0f, 0.0f, 1.0f,
-    -0.03f,    0.0f, 0.0f, 0.0f, 1.0f,
-    -0.02f, -0.025f, 0.0f, 0.0f, 1.0f,
-     0.00f,  -0.05f, 0.0f, 0.0f, 1.0f,
-     0.02f, -0.025f, 0.0f, 0.0f, 1.0f,
-    -0.03f,    0.0f, 0.0f, 0.0f, 1.0f,
-    -0.02f, -0.025f, 0.0f, 0.0f, 1.0f,
-     0.02f, -0.025f, 0.0f, 0.0f, 1.0f,
-     0.02f, -0.025f, 0.0f, 0.0f, 1.0f,
-     0.05f, -0.025f, 0.0f, 0.0f, 1.0f,
-     0.03f,    0.0f, 0.0f, 0.0f, 1.0f,
-    -0.03f,    0.0f, 0.0f, 0.0f, 1.0f,
-     0.02f, -0.025f, 0.0f, 0.0f, 1.0f,
-     0.03f,    0.0f, 0.0f, 0.0f, 1.0f,
-     0.03f,    0.0f, 0.0f, 0.0f, 1.0f,
-     0.04f,   0.05f, 0.0f, 0.0f, 1.0f,
-      0.0f,   0.01f, 0.0f, 0.0f, 1.0f,
-    -0.03f,    0.0f, 0.0f, 0.0f, 1.0f,
-     0.03f,    0.0f, 0.0f, 0.0f, 1.0f,
-      0.0f,   0.01f, 0.0f, 0.0f, 1.0f,
-    -0.03f,    0.0f, 0.0f, 0.0f, 1.0f,
-      0.0f,   0.01f, 0.0f, 0.0f, 1.0f,
-    -0.04f,   0.05f, 0.0f, 0.0f, 1.0f } };
+    -0.10f, -0.05f, 0.0f, 0.0f, 1.0f, 0.00f, 0.25f,
+    -0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.30f, 0.25f,
+    -0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.20f, 0.50f,
+    -0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.30f, 0.25f,
+     0.00f, -0.10f, 0.0f, 0.0f, 1.0f, 0.50f, 0.00f,
+     0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.70f, 0.25f,
+    -0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.20f, 0.50f,
+    -0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.30f, 0.25f,
+     0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.70f, 0.25f,
+     0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.70f, 0.25f,
+     0.10f, -0.05f, 0.0f, 0.0f, 1.0f, 1.00f, 0.25f,
+     0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.80f, 0.50f,
+    -0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.20f, 0.50f,
+     0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.70f, 0.25f,
+     0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.80f, 0.50f,
+     0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.80f, 0.50f,
+     0.08f,  0.10f, 0.0f, 0.0f, 1.0f, 0.90f, 1.00f,
+     0.00f,  0.02f, 0.0f, 0.0f, 1.0f, 0.50f, 0.60f,
+    -0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.20f, 0.50f,
+     0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.80f, 0.50f,
+     0.00f,  0.02f, 0.0f, 0.0f, 1.0f, 0.50f, 0.60f,
+    -0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.20f, 0.50f,
+     0.00f,  0.02f, 0.0f, 0.0f, 1.0f, 0.50f, 0.60f,
+    -0.08f,  0.10f, 0.0f, 0.0f, 1.0f, 0.10f, 1.00f } };
   type = vkMesh::MeshTypes::STAR;
   mMeshes->consume(type, vertices);
 
@@ -248,6 +269,32 @@ void Engine::make_assets() {
   finalizationChunk.commandBuffer  = mMainCommandBuffer;
 
   mMeshes->finalize(finalizationChunk);
+
+  // Materials
+  std::unordered_map<vkMesh::MeshTypes, const char*> filenames = {
+    std::make_pair(vkMesh::MeshTypes::TRIANGLE, "./res/tex/grass_texture.jpg"),
+    std::make_pair(vkMesh::MeshTypes::SQUARE, "./res/tex/water_texture.jpg"),
+    std::make_pair(vkMesh::MeshTypes::STAR, "./res/tex/sand_texture.jpg") };
+
+  vkInit::DescriptorSetLayoutData bindings;
+  bindings.count = 1;
+  bindings.types.push_back(vk::DescriptorType::eCombinedImageSampler);
+  mMeshDescriptorPool = vkInit::make_descriptor_pool(
+    mDevice, static_cast<uint32_t>(filenames.size()), bindings, mHasDebug);
+
+  vkImage::TextureInputChunk textureInfo {};
+  textureInfo.commandBuffer  = mMainCommandBuffer;
+  textureInfo.queue          = mGraphicsQueue;
+  textureInfo.device         = mDevice;
+  textureInfo.physicalDevice = mPhysicalDevice;
+  textureInfo.layout         = mMeshSetLayout;
+  textureInfo.descriptorPool = mMeshDescriptorPool;
+
+  for (const auto& [type, filename] : filenames) {
+    textureInfo.filename = filename;
+    mMaterials[type] = new vkImage::Texture{};
+    mMaterials[type]->init(textureInfo);
+  }
 }
 
 void Engine::prepare_scene(vk::CommandBuffer commandBuffer) {
@@ -315,7 +362,7 @@ void Engine::make_frame_resources() {
   vkInit::DescriptorSetLayoutData bindings;
   bindings.count = 1;
   bindings.types.push_back(vk::DescriptorType::eUniformBuffer);
-  mDescriptorPool = vkInit::make_descriptor_pool(
+  mFrameDescriptorPool = vkInit::make_descriptor_pool(
     mDevice,
     static_cast<uint32_t>(mSwapchainFrames.size()),
     bindings,
@@ -329,8 +376,18 @@ void Engine::make_frame_resources() {
     f.make_descriptor_resources(mPhysicalDevice, mDevice);
 
     f.descriptorSet = vkInit::allocate_descriptor_set(
-       mDevice, mDescriptorPool, mDescriptorSetLayout, mHasDebug);
+       mDevice, mFrameDescriptorPool, mFrameSetLayout, mHasDebug);
   }
+}
+
+void Engine::render_objects(vk::CommandBuffer commandBuffer,
+                           vkMesh::MeshTypes objType,
+                           uint32_t* startInstance, uint32_t instanceCount) {
+  uint32_t firstVertex = mMeshes->getOffset(objType);
+  uint32_t vertexCount = mMeshes->getSize(objType);
+  mMaterials[objType]->use(commandBuffer, mPipelineLayout);
+  commandBuffer.draw(vertexCount, instanceCount, firstVertex, *startInstance);
+  startInstance += instanceCount;
 }
 
 void Engine::record_draw_commands(vk::CommandBuffer commandBuffer,
@@ -369,24 +426,19 @@ void Engine::record_draw_commands(vk::CommandBuffer commandBuffer,
   prepare_scene(commandBuffer);
 
   {
-    uint32_t firstVertex = mMeshes->getOffset(vkMesh::MeshTypes::TRIANGLE);
-    uint32_t vertexCount = mMeshes->getSize(vkMesh::MeshTypes::TRIANGLE);
     uint32_t startInstance = 0;
     uint32_t instanceCount =
       static_cast<uint32_t>(scene->getTrianglePositions().size());
-    commandBuffer.draw(vertexCount, instanceCount, firstVertex, startInstance);
-    firstVertex = mMeshes->getOffset(vkMesh::MeshTypes::SQUARE);
-    vertexCount = mMeshes->getSize(vkMesh::MeshTypes::SQUARE);
-    startInstance += instanceCount;
+    render_objects(commandBuffer, vkMesh::MeshTypes::TRIANGLE,
+                   &startInstance, instanceCount);
     instanceCount =
       static_cast<uint32_t>(scene->getSquarePositions().size());
-    commandBuffer.draw(vertexCount, instanceCount, firstVertex, startInstance);
-    firstVertex = mMeshes->getOffset(vkMesh::MeshTypes::STAR);
-    vertexCount = mMeshes->getSize(vkMesh::MeshTypes::STAR);
-    startInstance += instanceCount;
+    render_objects(commandBuffer, vkMesh::MeshTypes::SQUARE,
+                   &startInstance, instanceCount);
     instanceCount =
       static_cast<uint32_t>(scene->getStarPositions().size());
-    commandBuffer.draw(vertexCount, instanceCount, firstVertex, startInstance);
+    render_objects(commandBuffer, vkMesh::MeshTypes::STAR,
+                   &startInstance, instanceCount);
   }
 
   commandBuffer.endRenderPass();
@@ -494,5 +546,5 @@ void Engine::cleanup_swapchain() {
   }
   mDevice.destroySwapchainKHR(mSwapchain);
 
-  mDevice.destroyDescriptorPool(mDescriptorPool);
+  mDevice.destroyDescriptorPool(mFrameDescriptorPool);
 }

@@ -43,10 +43,22 @@ endif()
 if(NOT EXISTS ${EXT_DIR}/glm/CMakeLists.txt)
   message(FATAL_ERROR "The glm submodule was not downloaded! GIT_SUBMODULE was truned off or failed. Please update submodules and try again.")
 endif()
+if(NOT EXISTS ${EXT_DIR}/stb/README.md)
+  message(FATAL_ERROR "The stb submodule was not downloaded! GIT_SUBMODULE was truned off or failed. Please update submodules and try again.")
+endif()
 
 add_subdirectory("ext/glfw")
 add_subdirectory("ext/glm")
 
+# STB module
+set(STB_DIR ${EXT_DIR}/stb)
+# include_directories(${STB_DIR})
+file(GLOB STB_FILES ${STB_DIR}/stb_image.h)
+add_library(stb INTERFACE)
+target_include_directories(stb INTERFACE ${STB_DIR})
+target_sources(stb INTERFACE ${STB_FILES})
+
+# VULKAN SDK
 if(NOT DEFINED {VULKAN_SDK})
   if(NOT DEFINED ENV{VULKAN_SDK})
     message(FATAL_ERROR "VULKAN_SDK not defined. Please provide a valid environment variable to the vulkan SDK.")
@@ -82,10 +94,11 @@ find_path(VULKAN_INC vulkan/vulkan.h
 )
 
 target_include_directories(${PROJECT_NAME}
-  PUBLIC
+  PRIVATE
   "ext/glfw"
   "ext/glm"
   ${VULKAN_INC}
+  ${STB_DIR}
 )
 
 set(VULKAN_LIB_DIR ${VULKAN_SDK}/lib ${VULKAN_SDK}/Lib)
@@ -99,6 +112,7 @@ target_link_libraries(${PROJECT_NAME}
   ${VULKAN_LIB}
   glfw
   glm
+  stb
 )
 
 add_dependencies(${PROJECT_NAME} build_shaders)

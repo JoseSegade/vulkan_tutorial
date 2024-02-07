@@ -3,6 +3,7 @@
 #define INC_MEMORY_H_
 
 #include "Common.h"
+#include "SingleTimeCommands.h"
 
 namespace vkUtil {
 
@@ -76,10 +77,7 @@ inline Buffer createBuffer(const BufferInputChunk& input) {
 inline void copyBuffer(const Buffer* srcBuffer, Buffer* dstBuffer,
                        vk::DeviceSize size, vk::Queue queue,
                        vk::CommandBuffer commandBuffer) {
-  commandBuffer.reset();
-  vk::CommandBufferBeginInfo beginInfo {};
-  beginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-  commandBuffer.begin(beginInfo);
+  vkUtil::start_job(commandBuffer);
 
   vk::BufferCopy copyRegion{};
   copyRegion.srcOffset = 0;
@@ -88,13 +86,7 @@ inline void copyBuffer(const Buffer* srcBuffer, Buffer* dstBuffer,
   commandBuffer.copyBuffer(srcBuffer->buffer, dstBuffer->buffer,
                            1, &copyRegion);
 
-  commandBuffer.end();
-
-  vk::SubmitInfo submitInfo {};
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &commandBuffer;
-  queue.submit(1, &submitInfo, nullptr);
-  queue.waitIdle();
+  vkUtil::end_job(commandBuffer, queue);
 }
 
 }  // namespace vkUtil

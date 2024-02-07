@@ -3,6 +3,7 @@
 #define INC_SCENE_H_
 
 #include "Common.h"
+#include "Mesh.h"
 
 class Scene {
  public:
@@ -12,6 +13,7 @@ class Scene {
   const std::vector<glm::vec3>& getTrianglePositions();
   const std::vector<glm::vec3>& getSquarePositions();
   const std::vector<glm::vec3>& getStarPositions();
+  const std::vector<glm::vec3>& getMeshPosition(vkMesh::MeshTypes type);
 
  private:
   std::vector<glm::vec3> mTrianglePositions {};

@@ -12,12 +12,12 @@
 namespace vkInit {
 
 struct GraphicsPipelineInBundle {
-  vk::Device              device;
-  std::string             vertexFilepath;
-  std::string             fragmenFilepath;
-  vk::Extent2D            extent;
-  vk::Format              swapchainFormat;
-  vk::DescriptorSetLayout descriptorSetLayout;
+  vk::Device                           device;
+  std::string                          vertexFilepath;
+  std::string                          fragmenFilepath;
+  vk::Extent2D                         extent;
+  vk::Format                           swapchainFormat;
+  std::vector<vk::DescriptorSetLayout> descriptorSetLayouts;
 };
 
 struct GraphicsPipelineOutBundle {
@@ -27,11 +27,14 @@ struct GraphicsPipelineOutBundle {
 };
 
 inline vk::PipelineLayout make_pipeline_layout(
-  vk::Device device, vk::DescriptorSetLayout layout, bool debug) {
+  vk::Device device,
+  std::vector<vk::DescriptorSetLayout> layouts,
+  bool debug) {
   vk::PipelineLayoutCreateInfo layoutInfo {};
   layoutInfo.flags                  = vk::PipelineLayoutCreateFlags();
-  layoutInfo.setLayoutCount         = 1;
-  layoutInfo.pSetLayouts            = &layout;
+  layoutInfo.setLayoutCount         =
+    static_cast<uint32_t>(layouts.size());
+  layoutInfo.pSetLayouts            = layouts.data();
   layoutInfo.pushConstantRangeCount = 0;
   layoutInfo.pPushConstantRanges    = nullptr;
 
@@ -97,7 +100,7 @@ inline GraphicsPipelineOutBundle make_graphics_pipeline(
 
   vk::VertexInputBindingDescription bindingDescription =
     vkMesh::getPosColorBindingDescription();
-  std::array<vk::VertexInputAttributeDescription, 2> attributeDescriptions =
+  std::vector<vk::VertexInputAttributeDescription> attributeDescriptions =
     vkMesh::getPosColorAttributeDescriptions();
 
   vk::PipelineVertexInputStateCreateInfo vertexInputInfo {};
@@ -209,7 +212,7 @@ inline GraphicsPipelineOutBundle make_graphics_pipeline(
   }
   vk::PipelineLayout pipelineLayout =
     make_pipeline_layout(specification.device,
-                         specification.descriptorSetLayout,
+                         specification.descriptorSetLayouts,
                          debug);
 
   if (debug) {

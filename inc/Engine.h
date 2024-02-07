@@ -6,7 +6,9 @@
 #include "Common.h"
 #include "Frame.h"
 #include "VertexMenagerie.h"
+#include "Image.h"
 #include <vector>
+#include <unordered_map>
 
 class Scene;
 class Engine {
@@ -22,7 +24,7 @@ class Engine {
   void make_swapchain();
   void recreate_swapchain();
   void cleanup_swapchain();
-  void make_descriptor_set_layout();
+  void make_descriptor_set_layouts();
   void make_pipeline();
   void finalize_setup();
   void make_framebuffers();
@@ -32,6 +34,12 @@ class Engine {
   void prepare_frame(uint32_t imageIndex, Scene* scene);
   void record_draw_commands(vk::CommandBuffer commandBuffer,
                             uint32_t imageIndex, Scene* scene);
+  void render_objects(vk::CommandBuffer commandBuffer,
+                      vkMesh::MeshTypes objType,
+                      uint32_t* startInstance, uint32_t instanceCount);
+
+ private:
+  using TextureMap = std::unordered_map<vkMesh::MeshTypes, vkImage::Texture*>;
 
   bool                       mHasDebug       = false;
 
@@ -54,8 +62,10 @@ class Engine {
   vk::Format                          mSwapchainFormat;
   vk::Extent2D                        mSwapchainExtent;
 
-  vk::DescriptorSetLayout             mDescriptorSetLayout;
-  vk::DescriptorPool                  mDescriptorPool;
+  vk::DescriptorSetLayout             mFrameSetLayout;
+  vk::DescriptorPool                  mFrameDescriptorPool;
+  vk::DescriptorSetLayout             mMeshSetLayout;
+  vk::DescriptorPool                  mMeshDescriptorPool;
 
   vk::PipelineLayout                  mPipelineLayout;
   vk::RenderPass                      mRenderPass;
@@ -67,7 +77,8 @@ class Engine {
   uint32_t                            mMaxFramesInFlight;
   uint32_t                            mFrameNumber;
 
-  VertexMenagerie* mMeshes = nullptr;
+  VertexMenagerie*                    mMeshes = nullptr;
+  TextureMap                          mMaterials;
 };
 
 #endif  // INC_ENGINE_H_

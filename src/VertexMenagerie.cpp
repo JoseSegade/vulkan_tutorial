@@ -17,7 +17,7 @@ void VertexMenagerie::consume(
   }
 
   uint32_t vertexCount =
-    static_cast<uint32_t>(vertexData.size() / 5);
+    static_cast<uint32_t>(vertexData.size() / vkMesh::VERTEX_COMPONENTS);
 
   mOffsets.insert(std::make_pair(type, mOffset));
   mSizes.insert(std::make_pair(type, vertexCount));

@@ -6,6 +6,7 @@
 #include "Logging.h"
 #include "Frame.h"
 #include "QueueFamilies.h"
+#include "Image.h"
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -214,24 +215,9 @@ inline SwapChainBundle create_swapchain(
     device.getSwapchainImagesKHR(bundle.swapchain);
   bundle.frames.resize(images.size());
   for (size_t i = 0; i < images.size(); ++i) {
-    vk::ImageViewCreateInfo createInfo{};
-    createInfo.image        = images[i];
-    createInfo.viewType     = vk::ImageViewType::e2D;
-    createInfo.components.r = vk::ComponentSwizzle::eIdentity;
-    createInfo.components.g = vk::ComponentSwizzle::eIdentity;
-    createInfo.components.b = vk::ComponentSwizzle::eIdentity;
-    createInfo.components.a = vk::ComponentSwizzle::eIdentity;
-    createInfo.subresourceRange.aspectMask     =
-      vk::ImageAspectFlagBits::eColor;
-    createInfo.subresourceRange.baseMipLevel   = 0;
-    createInfo.subresourceRange.levelCount     = 1;
-    createInfo.subresourceRange.baseArrayLayer = 0;
-    createInfo.subresourceRange.layerCount     = 1;
-    createInfo.format = format.format;
-
     bundle.frames[i].image = images[i];
     bundle.frames[i].imageView =
-      device.createImageView(createInfo);
+      vkImage::make_image_view(device, images[i], format.format);
   }
 
   bundle.format = format.format;
