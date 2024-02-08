@@ -220,19 +220,22 @@ void Engine::make_assets() {
      0.00f, -0.05f, 0.0f, 1.0f, 0.0f, 0.5f, 0.0f,
      0.05f,  0.05f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
     -0.05f,  0.05f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f } };
+  std::vector<uint32_t> indices = { {
+    0, 1, 2 } };
 
   vkMesh::MeshTypes type = vkMesh::MeshTypes::TRIANGLE;
-  mMeshes->consume(type, vertices);
+  mMeshes->consume(type, vertices, indices);
 
   vertices = { {
-    -0.05f,  0.05f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
-    -0.05f, -0.05f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-     0.05f, -0.05f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-     0.05f, -0.05f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-     0.05f,  0.05f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f,
-    -0.05f,  0.05f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f } };
+    -0.10f,  0.10f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+    -0.10f, -0.10f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+     0.10f, -0.10f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+     0.10f,  0.10f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f } };
   type = vkMesh::MeshTypes::SQUARE;
-  mMeshes->consume(type, vertices);
+  indices = { {
+    0, 1, 2,
+    2, 3, 0 } };
+  mMeshes->consume(type, vertices, indices);
 
   vertices = { {
     -0.10f, -0.05f, 0.0f, 0.0f, 1.0f, 0.00f, 0.25f,
@@ -241,26 +244,22 @@ void Engine::make_assets() {
     -0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.30f, 0.25f,
      0.00f, -0.10f, 0.0f, 0.0f, 1.0f, 0.50f, 0.00f,
      0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.70f, 0.25f,
-    -0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.20f, 0.50f,
-    -0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.30f, 0.25f,
-     0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.70f, 0.25f,
-     0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.70f, 0.25f,
      0.10f, -0.05f, 0.0f, 0.0f, 1.0f, 1.00f, 0.25f,
-     0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.80f, 0.50f,
-    -0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.20f, 0.50f,
-     0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.70f, 0.25f,
-     0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.80f, 0.50f,
      0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.80f, 0.50f,
      0.08f,  0.10f, 0.0f, 0.0f, 1.0f, 0.90f, 1.00f,
      0.00f,  0.02f, 0.0f, 0.0f, 1.0f, 0.50f, 0.60f,
-    -0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.20f, 0.50f,
-     0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.80f, 0.50f,
-     0.00f,  0.02f, 0.0f, 0.0f, 1.0f, 0.50f, 0.60f,
-    -0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.20f, 0.50f,
-     0.00f,  0.02f, 0.0f, 0.0f, 1.0f, 0.50f, 0.60f,
     -0.08f,  0.10f, 0.0f, 0.0f, 1.0f, 0.10f, 1.00f } };
+  indices = { {
+    0, 1, 2,
+    1, 3, 4,
+    2, 1, 4,
+    4, 5, 6,
+    2, 4, 6,
+    6, 7, 8,
+    2, 6, 8,
+    2, 8, 9 } };
   type = vkMesh::MeshTypes::STAR;
-  mMeshes->consume(type, vertices);
+  mMeshes->consume(type, vertices, indices);
 
   VertexMenagerie::FinalizationChunk finalizationChunk {};
   finalizationChunk.physicalDevice = mPhysicalDevice;
@@ -303,6 +302,8 @@ void Engine::prepare_scene(vk::CommandBuffer commandBuffer) {
 
   vk::DeviceSize offsets[] = { 0 };
   commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);
+  commandBuffer.bindIndexBuffer(mMeshes->getIndexBuffer().buffer,
+                                0, vk::IndexType::eUint32);
 }
 
 void Engine::prepare_frame(uint32_t frameIndex, Scene* scene) {
@@ -383,10 +384,11 @@ void Engine::make_frame_resources() {
 void Engine::render_objects(vk::CommandBuffer commandBuffer,
                            vkMesh::MeshTypes objType,
                            uint32_t* startInstance, uint32_t instanceCount) {
-  uint32_t firstVertex = mMeshes->getOffset(objType);
-  uint32_t vertexCount = mMeshes->getSize(objType);
+  uint32_t firstIndex = mMeshes->getOffset(objType);
+  uint32_t indexCount = mMeshes->getSize(objType);
   mMaterials[objType]->use(commandBuffer, mPipelineLayout);
-  commandBuffer.draw(vertexCount, instanceCount, firstVertex, *startInstance);
+  commandBuffer.drawIndexed(
+    indexCount, instanceCount, firstIndex, 0, *startInstance);
   *startInstance += instanceCount;
 }
 

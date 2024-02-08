@@ -9,6 +9,8 @@
 #include <unordered_map>
 
 class VertexMenagerie {
+  using Index = uint32_t;
+
  public:
   struct FinalizationChunk {
     vk::PhysicalDevice physicalDevice;
@@ -17,22 +19,29 @@ class VertexMenagerie {
     vk::CommandBuffer  commandBuffer;
   };
 
+ public:
   VertexMenagerie();
   ~VertexMenagerie();
   void init();
-  void consume(vkMesh::MeshTypes type, const std::vector<float>& vertexData);
+  void consume(
+    vkMesh::MeshTypes type,
+    const std::vector<float>& vertexData,
+    const std::vector<Index>& indices);
   void finalize(const FinalizationChunk& input);
   const vkUtil::Buffer& getVertexBuffer();
+  const vkUtil::Buffer& getIndexBuffer();
   uint32_t getOffset(vkMesh::MeshTypes type) const;
   uint32_t getSize(vkMesh::MeshTypes type) const;
 
  private:
-  vkUtil::Buffer mVertexBuffer;
-  std::unordered_map<vkMesh::MeshTypes, uint32_t> mOffsets;
-  std::unordered_map<vkMesh::MeshTypes, uint32_t> mSizes;
-  uint32_t mOffset = 0;
-  vk::Device mDevice;
-  std::vector<float> mLump;
+  vkUtil::Buffer                                  mVertexBuffer;
+  vkUtil::Buffer                                  mIndexBuffer;
+  std::unordered_map<vkMesh::MeshTypes, uint32_t> mFirstIndices;
+  std::unordered_map<vkMesh::MeshTypes, uint32_t> mIndexCounts;
+  uint32_t                                        mIndexOffset = 0;
+  vk::Device                                      mDevice;
+  std::vector<float>                              mVertexLump;
+  std::vector<Index>                              mIndexLump;
 };
 
 #endif  // INC_VERTEXMENAGERIE_H_
