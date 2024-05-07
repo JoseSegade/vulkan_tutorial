@@ -26,7 +26,6 @@ inline uint32_t findMemoryTypeIndex(
   vk::PhysicalDeviceMemoryProperties memoryProperties =
     physicalDevice.getMemoryProperties();
 
-  uint32_t typeIndex = 0;
   for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; ++i) {
     bool isSupported =
       static_cast<bool>(supportedMemoryIndices & (1 << i));
@@ -36,12 +35,12 @@ inline uint32_t findMemoryTypeIndex(
       == requestedProperties;
 
     if (isSupported && isSufficient) {
-      typeIndex = i;
-      break;
+      return i;
     }
   }
 
-  return typeIndex;
+  printf("Error type index not found\n");
+  throw std::runtime_error("");
 }
 
 inline void allocateBufferMemory(Buffer* buffer,

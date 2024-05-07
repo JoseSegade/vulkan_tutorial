@@ -1,5 +1,4 @@
 // Copyright (c) 2024 Meerkat
-
 #include "../inc/App.h"
 #include <algorithm>
 #include <sstream>

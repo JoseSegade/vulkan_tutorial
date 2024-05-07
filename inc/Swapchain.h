@@ -106,31 +106,25 @@ inline SwapChainSupportDetails query_swap_chain_support(
 
 inline vk::SurfaceFormatKHR choose_swapchain_surface_format(
   const std::vector<vk::SurfaceFormatKHR>& formats) {
-  vk::SurfaceFormatKHR result = formats[0];
-
   for (const vk::SurfaceFormatKHR& f : formats) {
     if (f.format == vk::Format::eB8G8R8A8Unorm
       && f.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
-      result = f;
-      break;
+      return f;
     }
   }
-
-  return result;
+  return formats.at(0);
 }
 
 inline vk::PresentModeKHR choose_swapchain_present_mode(
   std::vector<vk::PresentModeKHR> presentModes) {
-  vk::PresentModeKHR result = vk::PresentModeKHR::eFifo;
-
   for (const vk::PresentModeKHR m : presentModes) {
     if (m == vk::PresentModeKHR::eMailbox) {
-      result = m;
-      break;
+      return m;
+    } else if (m == vk::PresentModeKHR::eImmediate) {
+      return m;
     }
   }
-
-  return result;
+  return presentModes.at(0);
 }
 
 inline vk::Extent2D choose_swapchain_extent(
@@ -215,9 +209,12 @@ inline SwapChainBundle create_swapchain(
     device.getSwapchainImagesKHR(bundle.swapchain);
   bundle.frames.resize(images.size());
   for (size_t i = 0; i < images.size(); ++i) {
-    bundle.frames[i].image = images[i];
-    bundle.frames[i].imageView =
-      vkImage::make_image_view(device, images[i], format.format);
+    bundle.frames[i].init(device, physicalDevice);
+
+    bundle.frames[i].setImage(images[i]);
+    bundle.frames[i].setImageView(
+      vkImage::make_image_view(device, images[i], format.format,
+                               vk::ImageAspectFlagBits::eColor));
   }
 
   bundle.format = format.format;

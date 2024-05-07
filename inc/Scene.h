@@ -4,6 +4,7 @@
 
 #include "Common.h"
 #include "Mesh.h"
+#include <vector>
 
 class Scene {
  public:

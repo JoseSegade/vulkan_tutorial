@@ -17,6 +17,7 @@ struct GraphicsPipelineInBundle {
   std::string                          fragmenFilepath;
   vk::Extent2D                         extent;
   vk::Format                           swapchainFormat;
+  vk::Format                           depthFormat;
   std::vector<vk::DescriptorSetLayout> descriptorSetLayouts;
 };
 
@@ -50,9 +51,8 @@ inline vk::PipelineLayout make_pipeline_layout(
   return pl;
 }
 
-inline vk::RenderPass make_renderpass(
-  vk::Device device, vk::Format swapchainImageFormat,
-  bool debug) {
+inline vk::AttachmentDescription make_color_attachment(
+  const vk::Format& swapchainImageFormat) {
   vk::AttachmentDescription colorAttachment {};
   colorAttachment.flags          = vk::AttachmentDescriptionFlags();
   colorAttachment.format         = swapchainImageFormat;
@@ -64,22 +64,85 @@ inline vk::RenderPass make_renderpass(
   colorAttachment.initialLayout  = vk::ImageLayout::eUndefined;
   colorAttachment.finalLayout    = vk::ImageLayout::ePresentSrcKHR;
 
+  return colorAttachment;
+}
+
+inline vk::AttachmentReference make_color_attachment_reference() {
   vk::AttachmentReference colorAttachmentRef {};
   colorAttachmentRef.attachment = 0;
   colorAttachmentRef.layout     = vk::ImageLayout::eColorAttachmentOptimal;
+  
+  return colorAttachmentRef;
+}
 
+inline vk::AttachmentDescription make_depth_attachment(
+  const vk::Format& depthFormat) {
+  vk::AttachmentDescription depthAttachment {};
+  depthAttachment.flags          = vk::AttachmentDescriptionFlags();
+  depthAttachment.format         = depthFormat;
+  depthAttachment.samples        = vk::SampleCountFlagBits::e1;
+  depthAttachment.loadOp         = vk::AttachmentLoadOp::eClear;
+  depthAttachment.storeOp        = vk::AttachmentStoreOp::eStore;
+  depthAttachment.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;
+  depthAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+  depthAttachment.initialLayout  = vk::ImageLayout::eUndefined;
+  depthAttachment.finalLayout    =
+    vk::ImageLayout::eDepthStencilAttachmentOptimal;
+
+  return depthAttachment;
+}
+
+inline vk::AttachmentReference make_depth_attachment_reference() {
+  vk::AttachmentReference depthAttachmentRef {};
+  depthAttachmentRef.attachment = 1;
+  depthAttachmentRef.layout     = vk::ImageLayout::eDepthAttachmentOptimal;
+  
+  return depthAttachmentRef;
+}
+
+inline vk::SubpassDescription make_subpass(
+  const std::vector<vk::AttachmentReference>& attachments) {
   vk::SubpassDescription subpass {};
-  subpass.flags                = vk::SubpassDescriptionFlags();
-  subpass.pipelineBindPoint    = vk::PipelineBindPoint::eGraphics;
-  subpass.colorAttachmentCount = 1;
-  subpass.pColorAttachments    = &colorAttachmentRef;
+  subpass.flags                   = vk::SubpassDescriptionFlags();
+  subpass.pipelineBindPoint       = vk::PipelineBindPoint::eGraphics;
+  subpass.colorAttachmentCount    = 1;
+  subpass.pColorAttachments       = &attachments[0];
+  subpass.pDepthStencilAttachment = &attachments[1];
 
+  return subpass;
+}
+
+inline vk::RenderPassCreateInfo make_renderpass_info(
+  const std::vector<vk::AttachmentDescription>& attachments,
+  const vk::SubpassDescription& subpass) {
   vk::RenderPassCreateInfo renderPassInfo {};
   renderPassInfo.flags = vk::RenderPassCreateFlags();
-  renderPassInfo.attachmentCount = 1;
-  renderPassInfo.pAttachments = &colorAttachment;
+  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+  renderPassInfo.pAttachments = attachments.data();
   renderPassInfo.subpassCount = 1;
   renderPassInfo.pSubpasses = &subpass;
+
+  return renderPassInfo;
+}
+
+inline vk::RenderPass make_renderpass(
+  vk::Device device,
+  vk::Format swapchainImageFormat,
+  vk::Format depthFormat,
+  bool debug) {
+  std::vector<vk::AttachmentDescription> attachments;
+  std::vector<vk::AttachmentReference> attachmentReferences;
+
+  attachments.push_back(make_color_attachment(swapchainImageFormat));
+  attachmentReferences.push_back(make_color_attachment_reference());
+
+  attachments.push_back(make_depth_attachment(depthFormat));
+  attachmentReferences.push_back(make_depth_attachment_reference());
+
+  const vk::SubpassDescription subpass = make_subpass(attachmentReferences);
+  const vk::RenderPassCreateInfo renderPassInfo =
+    make_renderpass_info(attachments, subpass);
+
 
   vk::RenderPass rp {};
   try {
@@ -150,6 +213,14 @@ inline GraphicsPipelineOutBundle make_graphics_pipeline(
   fragmentShaderInfo.pName  = "main";
   shaderStages.push_back(fragmentShaderInfo);
 
+  vk::PipelineDepthStencilStateCreateInfo depthState {};
+  depthState.flags                 = vk::PipelineDepthStencilStateCreateFlags();
+  depthState.depthBoundsTestEnable = true;
+  depthState.depthWriteEnable      = true;
+  depthState.depthCompareOp        = vk::CompareOp::eLess;
+  depthState.depthBoundsTestEnable = false;
+  depthState.stencilTestEnable     = false;
+
   vk::Viewport viewport {};
   viewport.x        = 0.0f;
   viewport.y        = 0.0f;
@@ -218,9 +289,11 @@ inline GraphicsPipelineOutBundle make_graphics_pipeline(
   if (debug) {
     printf("Creating render pass...\n");
   }
-  vk::RenderPass renderPass =
-    make_renderpass(specification.device, specification.swapchainFormat, debug);
-
+  vk::RenderPass renderPass = make_renderpass(
+    specification.device,
+    specification.swapchainFormat,
+    specification.depthFormat,
+    debug);
 
   vk::GraphicsPipelineCreateInfo pipelineInfo {};
   pipelineInfo.flags               = vk::PipelineCreateFlags();
@@ -231,6 +304,7 @@ inline GraphicsPipelineOutBundle make_graphics_pipeline(
   pipelineInfo.stageCount          =
     static_cast<uint32_t>(shaderStages.size());
   pipelineInfo.pStages             = shaderStages.data();
+  pipelineInfo.pDepthStencilState  = &depthState;
   pipelineInfo.pMultisampleState   = &multisampling;
   pipelineInfo.pColorBlendState    = &colorBlending;
   pipelineInfo.layout              = pipelineLayout;

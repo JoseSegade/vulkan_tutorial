@@ -78,18 +78,17 @@ inline vk::PhysicalDevice choose_physical_device(
            availableDevices.size());
   }
 
-  vk::PhysicalDevice result{};
   for (const vk::PhysicalDevice& device : availableDevices) {
     if (debug) {
       vkInit::log_device_properties(device);
     }
     if (isSuitable(device, debug)) {
-      result = device;
-      break;
+      return device;
     }
   }
 
-  return result;
+  printf("Error: Suiltable devie not found\n");
+  throw std::runtime_error("");
 }
 
 

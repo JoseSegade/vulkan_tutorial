@@ -3,6 +3,7 @@
 #define INC_IMAGE_H_
 
 #include "Common.h"
+#include <vector>
 
 namespace vkImage {
 
@@ -24,6 +25,7 @@ struct ImageInputChunk {
   vk::ImageTiling         tiling;
   vk::ImageUsageFlags     usage;
   vk::MemoryPropertyFlags memoryProperties;
+  vk::Format              format;
 };
 
 struct ImageLayoutTransitionJob {
@@ -89,7 +91,12 @@ vk::DeviceMemory make_image_memory(
 void transition_image_layout(const ImageLayoutTransitionJob& job);
 void copy_buffer_to_image(const BufferImageCopyJob& job);
 vk::ImageView make_image_view(
-  vk::Device device, vk::Image image, vk::Format format);
+  vk::Device device, vk::Image image, vk::Format format,
+  vk::ImageAspectFlags aspectFlags);
+vk::Format find_supported_format(
+  vk::PhysicalDevice physicalDevice,
+  const std::vector<vk::Format>& candidates,
+  vk::ImageTiling tiling, vk::FormatFeatureFlags features);
 
 }  // namespace vkImage
 

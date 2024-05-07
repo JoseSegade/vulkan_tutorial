@@ -51,8 +51,8 @@ inline void make_frame_command_buffers(
 
   for (size_t i = 0; i < input->frames->size(); ++i) {
     try {
-      input->frames->at(i).commandBuffer =
-        input->device.allocateCommandBuffers(allocInfo)[0];
+      input->frames->at(i).setCommandBuffer(
+        input->device.allocateCommandBuffers(allocInfo)[0]);
     } catch (vk::SystemError err) {
       printf("Error while creating command buffer for frame %lu. Error%s\n",
              i, err.what());

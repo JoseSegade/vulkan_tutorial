@@ -31,6 +31,7 @@ void vkImage::Texture::init(const TextureInputChunk& input) {
   imageInput.physicalDevice   = mPhysicalDevice;
   imageInput.width            = mWidth;
   imageInput.height           = mHeight;
+  imageInput.format           = vk::Format::eR8G8B8A8Unorm;
   imageInput.tiling           = vk::ImageTiling::eOptimal;
   imageInput.usage            = vk::ImageUsageFlagBits::eTransferDst
     | vk::ImageUsageFlagBits::eSampled;
@@ -76,7 +77,7 @@ void vkImage::Texture::populate() {
   input.physicalDevice   = mPhysicalDevice;
   input.memoryProperties = vk::MemoryPropertyFlagBits::eHostCoherent
     | vk::MemoryPropertyFlagBits::eHostVisible;
-  input.usage            = vk::BufferUsageFlagBits::eTransferDst;
+  input.usage            = vk::BufferUsageFlagBits::eTransferSrc;
   input.size             = mWidth * mHeight * 4;
 
   vkUtil::Buffer stagingBuffer = vkUtil::createBuffer(input);
@@ -112,7 +113,9 @@ void vkImage::Texture::populate() {
 }
 
 void vkImage::Texture::make_view() {
-  mImageView = make_image_view(mDevice, mImage, vk::Format::eR8G8B8A8Unorm);
+  mImageView = make_image_view(
+    mDevice, mImage, vk::Format::eR8G8B8A8Unorm,
+    vk::ImageAspectFlagBits::eColor);
 }
 
 void vkImage::Texture::make_sampler() {
@@ -170,7 +173,7 @@ vk::Image vkImage::make_image(const ImageInputChunk& input) {
   imageInfo.extent        = vk::Extent3D(input.width, input.height, 1);
   imageInfo.mipLevels     = 1;
   imageInfo.arrayLayers   = 1;
-  imageInfo.format        = vk::Format::eR8G8B8A8Unorm;
+  imageInfo.format        = input.format;
   imageInfo.tiling        = input.tiling;
   imageInfo.initialLayout = vk::ImageLayout::eUndefined;
   imageInfo.usage         = input.usage;
@@ -276,7 +279,8 @@ void vkImage::copy_buffer_to_image(const BufferImageCopyJob& job) {
 }
 
 vk::ImageView vkImage::make_image_view(
-  vk::Device device, vk::Image image, vk::Format format) {
+  vk::Device device, vk::Image image, vk::Format format,
+  vk::ImageAspectFlags aspectFlags) {
   vk::ImageViewCreateInfo createInfo{};
   createInfo.image        = image;
   createInfo.viewType     = vk::ImageViewType::e2D;
@@ -284,8 +288,7 @@ vk::ImageView vkImage::make_image_view(
   createInfo.components.g = vk::ComponentSwizzle::eIdentity;
   createInfo.components.b = vk::ComponentSwizzle::eIdentity;
   createInfo.components.a = vk::ComponentSwizzle::eIdentity;
-  createInfo.subresourceRange.aspectMask     =
-    vk::ImageAspectFlagBits::eColor;
+  createInfo.subresourceRange.aspectMask     = aspectFlags;
   createInfo.subresourceRange.baseMipLevel   = 0;
   createInfo.subresourceRange.levelCount     = 1;
   createInfo.subresourceRange.baseArrayLayer = 0;
@@ -294,4 +297,27 @@ vk::ImageView vkImage::make_image_view(
 
   vk::ImageView res = device.createImageView(createInfo);
   return res;
+}
+
+vk::Format vkImage::find_supported_format(
+  vk::PhysicalDevice physicalDevice,
+  const std::vector<vk::Format>& candidates,
+  vk::ImageTiling tiling, vk::FormatFeatureFlags features) {
+  for (const vk::Format& format : candidates) {
+    vk::FormatProperties properties =
+      physicalDevice.getFormatProperties(format);
+
+    if (tiling == vk::ImageTiling::eLinear
+        && (properties.linearTilingFeatures & features) == features) {
+      return format;
+    }
+
+    if (tiling == vk::ImageTiling::eOptimal
+        && (properties.optimalTilingFeatures & features) == features) {
+      return format;
+    }
+  }
+
+  printf("Error: Unable to find suitable format.\n");
+  throw std::runtime_error("");
 }

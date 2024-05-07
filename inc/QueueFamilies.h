@@ -51,7 +51,7 @@ inline QueueFamilyIndices findQueueFamilies(
     }
 
     if (indices.isComplete()) {
-      break;
+      return indices;
     }
     ++i;
   }

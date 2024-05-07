@@ -14,91 +14,83 @@ struct UniformBufferObject {
   glm::mat4 viewProjection;
 };
 
-struct SwapChainFrame {
+class SwapChainFrame {
+ public:
+  struct SyncObjects {
+    vk::Semaphore imageAvailable;
+    vk::Semaphore renderFinished;
+    vk::Fence     inFlight;
+  };
+
+ public:
+  SwapChainFrame();
+  ~SwapChainFrame();
+
+  void init(vk::Device device, vk::PhysicalDevice physicalDevice);
+
+  void make_descriptor_resources();
+  void make_depth_resources();
+  void write_descriptor_set();
+  void destroy();
+
+  void setSyncObjects(const SyncObjects& syncObjects);
+  void setImage(const vk::Image& image);
+  void setImageView(const vk::ImageView& imageView);
+  void setDescriptorSet(const vk::DescriptorSet& descriptorSet);
+  void setDimensions(uint32_t width, uint32_t height);
+  void setCommandBuffer(const vk::CommandBuffer& commandBuffer);
+  void setFramebuffer(const vk::Framebuffer& framebuffer);
+
+  UniformBufferObject* const CameraData();
+  void* const CameraDataWriteLocation();
+  std::vector<glm::mat4>& ModelTransforms();
+  void* const ModelBufferWriteLocation();
+  vk::ImageView getImageView();
+  vk::ImageView getDepthBufferView();
+  vk::Fence getInFlight();
+  vk::Semaphore getImageAvailable();
+  vk::Semaphore getRenderFinished();
+  vk::CommandBuffer getCommandBuffer();
+  vk::Framebuffer getFramebuffer();
+  vk::DescriptorSet getDescriptorSet();
+  vk::Format getDepthFormat();
+
+ private:
+  // Devices
+  vk::Device               mDevice;
+  vk::PhysicalDevice       mPhysicalDevice;
+
   // Swapchain
-  vk::Image                image;
-  vk::ImageView            imageView;
-  vk::Framebuffer          framebuffer;
+  vk::Image                mImage;
+  vk::ImageView            mImageView;
+  vk::Framebuffer          mFramebuffer;
+  vk::Image                mDepthBuffer;
+  vk::DeviceMemory         mDepthBufferMemory;
+  vk::ImageView            mDepthBufferView;
+  vk::Format               mDepthFormat;
+  uint32_t                 mWidth;
+  uint32_t                 mHeight;
 
   // Command
-  vk::CommandBuffer        commandBuffer;
+  vk::CommandBuffer        mCommandBuffer;
 
   // Sync
-  vk::Semaphore            imageAvailable;
-  vk::Semaphore            renderFinished;
-  vk::Fence                inFlight;
+  vk::Semaphore            mImageAvailable;
+  vk::Semaphore            mRenderFinished;
+  vk::Fence                mInFlight;
 
   // Resources
-  UniformBufferObject      cameraData;
-  Buffer                   cameraDataBuffer;
-  void*                    cameraDataWriteLocation;
-  std::vector<glm::mat4>   modelTransforms;
-  Buffer                   modelBuffer;
-  void*                    modelBufferWriteLocation;
+  UniformBufferObject      mCameraData;
+  Buffer                   mCameraDataBuffer;
+  void*                    mCameraDataWriteLocation;
+  std::vector<glm::mat4>   mModelTransforms;
+  Buffer                   mModelBuffer;
+  void*                    mModelBufferWriteLocation;
 
   // Resource descriptors
-  vk::DescriptorBufferInfo uniformBufferDescriptor;
-  vk::DescriptorBufferInfo modelBufferDescriptor;
-  vk::DescriptorSet        descriptorSet;
-
-  inline void make_descriptor_resources(
-    vk::PhysicalDevice physicalDevice, vk::Device device) {
-    BufferInputChunk input {};
-    input.physicalDevice   = physicalDevice;
-    input.device           = device;
-    input.memoryProperties = vk::MemoryPropertyFlagBits::eHostVisible
-      | vk::MemoryPropertyFlagBits::eHostCoherent;
-    input.size             = sizeof(UniformBufferObject);
-    input.usage            = vk::BufferUsageFlagBits::eUniformBuffer;
-
-    cameraDataBuffer = createBuffer(input);
-
-    cameraDataWriteLocation = device.mapMemory(
-      cameraDataBuffer.bufferMemory, 0, sizeof(UniformBufferObject));
-
-    input.size             = 1024 * sizeof(glm::mat4);
-    input.usage            = vk::BufferUsageFlagBits::eStorageBuffer;
-
-    modelBuffer = createBuffer(input);
-
-    modelBufferWriteLocation = device.mapMemory(
-      modelBuffer.bufferMemory, 0, 1024 * sizeof(glm::mat4));
-
-    modelTransforms.reserve(1024);
-    for (uint32_t i = 0; i < 1024; ++i) {
-      modelTransforms.push_back(glm::mat4(1.0f));
-    }
-
-    uniformBufferDescriptor.buffer = cameraDataBuffer.buffer;
-    uniformBufferDescriptor.offset = 0;
-    uniformBufferDescriptor.range  = sizeof(UniformBufferObject);
-
-    modelBufferDescriptor.buffer = modelBuffer.buffer;
-    modelBufferDescriptor.offset = 0;
-    modelBufferDescriptor.range  = 1024 * sizeof(glm::mat4);
-  }
-
-  inline void write_descriptor_set(vk::Device device) {
-    vk::WriteDescriptorSet writeInfo {};
-    writeInfo.dstSet          = descriptorSet;
-    writeInfo.dstBinding      = 0;
-    writeInfo.dstArrayElement = 0;
-    writeInfo.descriptorCount = 1;
-    writeInfo.descriptorType  = vk::DescriptorType::eUniformBuffer;
-    writeInfo.pBufferInfo     = &uniformBufferDescriptor;
-
-    device.updateDescriptorSets(writeInfo, nullptr);
-
-    vk::WriteDescriptorSet writeInfo2 {};
-    writeInfo2.dstSet          = descriptorSet;
-    writeInfo2.dstBinding      = 1;
-    writeInfo2.dstArrayElement = 0;
-    writeInfo2.descriptorCount = 1;
-    writeInfo2.descriptorType  = vk::DescriptorType::eStorageBuffer;
-    writeInfo2.pBufferInfo     = &modelBufferDescriptor;
-
-    device.updateDescriptorSets(writeInfo2, nullptr);
-  }
+  vk::DescriptorBufferInfo mUniformBufferDescriptor;
+  vk::DescriptorBufferInfo mModelBufferDescriptor;
+  vk::DescriptorSet        mDescriptorSet;
 };
 
 }  // namespace vkUtil

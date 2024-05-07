@@ -1,4 +1,4 @@
-// Copyright (c)
+// Copyright (c) 2024 Meerkat
 #include "../inc/Engine.h"
 #include "../inc/Instance.h"
 #include "../inc/Logging.h"
@@ -120,6 +120,13 @@ void Engine::make_swapchain() {
   mSwapchainExtent = bundle.extent;
 
   mMaxFramesInFlight = static_cast<uint32_t>(mSwapchainFrames.size());
+
+  for (vkUtil::SwapChainFrame& frame : mSwapchainFrames) {
+    frame.setDimensions(mSwapchainExtent.width,
+                        mSwapchainExtent.height);
+
+    frame.make_depth_resources();
+  }
 }
 
 void Engine::recreate_swapchain() {
@@ -185,6 +192,7 @@ void Engine::make_pipeline() {
   specification.fragmenFilepath      = "./bin/shaders/default.frag.spv";
   specification.extent               = mSwapchainExtent;
   specification.swapchainFormat      = mSwapchainFormat;
+  specification.depthFormat          = mSwapchainFrames[0].getDepthFormat();
   specification.descriptorSetLayouts = { mFrameSetLayout, mMeshSetLayout };
 
   vkInit::GraphicsPipelineOutBundle output =
@@ -241,7 +249,6 @@ void Engine::make_assets() {
     -0.10f, -0.05f, 0.0f, 0.0f, 1.0f, 0.00f, 0.25f,
     -0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.30f, 0.25f,
     -0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.20f, 0.50f,
-    -0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.30f, 0.25f,
      0.00f, -0.10f, 0.0f, 0.0f, 1.0f, 0.50f, 0.00f,
      0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.70f, 0.25f,
      0.10f, -0.05f, 0.0f, 0.0f, 1.0f, 1.00f, 0.25f,
@@ -322,32 +329,32 @@ void Engine::prepare_frame(uint32_t frameIndex, Scene* scene) {
   proj[1][1] *= -1;
 
   vkUtil::SwapChainFrame& frame = mSwapchainFrames[frameIndex];
-  frame.cameraData.view = view;
-  frame.cameraData.projection = proj;
-  frame.cameraData.viewProjection = proj * view;
+  frame.CameraData()->view = view;
+  frame.CameraData()->projection = proj;
+  frame.CameraData()->viewProjection = proj * view;
 
-  memcpy(frame.cameraDataWriteLocation,
-         &(frame.cameraData),
+  memcpy(frame.CameraDataWriteLocation(),
+         frame.CameraData(),
          sizeof(vkUtil::UniformBufferObject));
 
   size_t i = 0;
   for (const glm::vec3& position : scene->getSquarePositions()) {
-    frame.modelTransforms[i] = glm::translate(glm::mat4(1.0f), position);
+    frame.ModelTransforms()[i] = glm::translate(glm::mat4(1.0f), position);
     ++i;
   }
   for (const glm::vec3& position : scene->getTrianglePositions()) {
-    frame.modelTransforms[i] = glm::translate(glm::mat4(1.0f), position);
+    frame.ModelTransforms()[i] = glm::translate(glm::mat4(1.0f), position);
     ++i;
   }
   for (const glm::vec3& position : scene->getStarPositions()) {
-    frame.modelTransforms[i] = glm::translate(glm::mat4(1.0f), position);
+    frame.ModelTransforms()[i] = glm::translate(glm::mat4(1.0f), position);
     ++i;
   }
-  memcpy(frame.modelBufferWriteLocation,
-         frame.modelTransforms.data(),
+  memcpy(frame.ModelBufferWriteLocation(),
+         frame.ModelTransforms().data(),
          i * sizeof(glm::mat4));
 
-  frame.write_descriptor_set(mDevice);
+  frame.write_descriptor_set();
 }
 
 void Engine::make_framebuffers() {
@@ -370,14 +377,16 @@ void Engine::make_frame_resources() {
     mHasDebug);
 
   for (vkUtil::SwapChainFrame& f : mSwapchainFrames) {
-    f.inFlight = vkInit::make_fence(mDevice, mHasDebug);
-    f.imageAvailable = vkInit::make_semaphore(mDevice, mHasDebug);
-    f.renderFinished = vkInit::make_semaphore(mDevice, mHasDebug);
+    vkUtil::SwapChainFrame::SyncObjects so {};
+    so.inFlight = vkInit::make_fence(mDevice, mHasDebug);
+    so.imageAvailable = vkInit::make_semaphore(mDevice, mHasDebug);
+    so.renderFinished = vkInit::make_semaphore(mDevice, mHasDebug);
+    f.setSyncObjects(so);
 
-    f.make_descriptor_resources(mPhysicalDevice, mDevice);
+    f.make_descriptor_resources();
 
-    f.descriptorSet = vkInit::allocate_descriptor_set(
-       mDevice, mFrameDescriptorPool, mFrameSetLayout, mHasDebug);
+    f.setDescriptorSet(vkInit::allocate_descriptor_set(
+       mDevice, mFrameDescriptorPool, mFrameSetLayout, mHasDebug));
   }
 }
 
@@ -406,21 +415,27 @@ void Engine::record_draw_commands(vk::CommandBuffer commandBuffer,
 
   vk::ClearValue clearColor  =
     { { 1.0f, 0.5f, 0.25f, 1.0f } };
+  vk::ClearValue clearDepth {};
+  clearDepth.depthStencil = vk::ClearDepthStencilValue(1.0f, 0);
+  std::vector<vk::ClearValue> clearValues = { { clearColor, clearDepth } };
+
   vk::RenderPassBeginInfo renderPassInfo {};
-  renderPassInfo.renderPass = mRenderPass;
-  renderPassInfo.framebuffer = mSwapchainFrames[imageIndex].framebuffer;
+  renderPassInfo.renderPass          = mRenderPass;
+  renderPassInfo.framebuffer         =
+    mSwapchainFrames[imageIndex].getFramebuffer();
   renderPassInfo.renderArea.offset.x = 0;
   renderPassInfo.renderArea.offset.y = 0;
   renderPassInfo.renderArea.extent = mSwapchainExtent;
-  renderPassInfo.clearValueCount = 1;
-  renderPassInfo.pClearValues = &clearColor;
+  renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+  renderPassInfo.pClearValues = clearValues.data();
 
   commandBuffer.beginRenderPass(&renderPassInfo, vk::SubpassContents::eInline);
 
-  commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-                                   mPipelineLayout, 0,
-                                   mSwapchainFrames[imageIndex].descriptorSet,
-                                   nullptr);
+  commandBuffer.bindDescriptorSets(
+    vk::PipelineBindPoint::eGraphics,
+    mPipelineLayout, 0,
+    mSwapchainFrames[imageIndex].getDescriptorSet(),
+    nullptr);
 
   commandBuffer.bindPipeline(
     vk::PipelineBindPoint::eGraphics, mGraphicsPipeline);
@@ -456,15 +471,16 @@ void Engine::record_draw_commands(vk::CommandBuffer commandBuffer,
 }
 
 void Engine::render(Scene* scene) {
+  vk::Fence inFlight = mSwapchainFrames[mFrameNumber].getInFlight();
   mDevice.waitForFences(
-    1, &mSwapchainFrames[mFrameNumber].inFlight, VK_TRUE, UINT64_MAX);
+    1, &inFlight, VK_TRUE, UINT64_MAX);
 
   uint32_t imageIndex;
   try {
     vk::ResultValue acquire =
       mDevice.acquireNextImageKHR(
         mSwapchain, UINT64_MAX,
-        mSwapchainFrames[mFrameNumber].imageAvailable, nullptr);
+        mSwapchainFrames[mFrameNumber].getImageAvailable(), nullptr);
     imageIndex = acquire.value;
   } catch (vk::OutOfDateKHRError) {
     recreate_swapchain();
@@ -472,7 +488,7 @@ void Engine::render(Scene* scene) {
   }
 
   vk::CommandBuffer commandBuffer =
-    mSwapchainFrames[mFrameNumber].commandBuffer;
+    mSwapchainFrames[mFrameNumber].getCommandBuffer();
   commandBuffer.reset();
 
   prepare_frame(imageIndex, scene);
@@ -480,9 +496,9 @@ void Engine::render(Scene* scene) {
   record_draw_commands(commandBuffer, imageIndex, scene);
 
   vk::Semaphore waitSemaphores[] =
-    { mSwapchainFrames[mFrameNumber].imageAvailable };
+    { mSwapchainFrames[mFrameNumber].getImageAvailable() };
   vk::Semaphore signalSemaphores[] =
-    { mSwapchainFrames[mFrameNumber].renderFinished };
+    { mSwapchainFrames[mFrameNumber].getRenderFinished() };
   vk::PipelineStageFlags waitStages[] =
     { vk::PipelineStageFlagBits::eColorAttachmentOutput };
   vk::SubmitInfo submitInfo {};
@@ -494,10 +510,11 @@ void Engine::render(Scene* scene) {
   submitInfo.signalSemaphoreCount = 1;
   submitInfo.pSignalSemaphores    = signalSemaphores;
 
-  mDevice.resetFences(1, &mSwapchainFrames[mFrameNumber].inFlight);
+  mDevice.resetFences(1, &inFlight);
 
   try {
-    mGraphicsQueue.submit(submitInfo, mSwapchainFrames[mFrameNumber].inFlight);
+    mGraphicsQueue.submit(
+      submitInfo, inFlight);
   } catch (vk::SystemError err) {
     if (mHasDebug) {
       printf("Failed to submit draw command buffer. Error: %s\n",
@@ -531,20 +548,8 @@ void Engine::render(Scene* scene) {
 }
 
 void Engine::cleanup_swapchain() {
-  for (const vkUtil::SwapChainFrame& f : mSwapchainFrames) {
-    mDevice.destroyImageView(f.imageView);
-    mDevice.destroyFramebuffer(f.framebuffer);
-    mDevice.destroyFence(f.inFlight);
-    mDevice.destroySemaphore(f.imageAvailable);
-    mDevice.destroySemaphore(f.renderFinished);
-
-    mDevice.unmapMemory(f.cameraDataBuffer.bufferMemory);
-    mDevice.freeMemory(f.cameraDataBuffer.bufferMemory);
-    mDevice.destroyBuffer(f.cameraDataBuffer.buffer);
-
-    mDevice.unmapMemory(f.modelBuffer.bufferMemory);
-    mDevice.freeMemory(f.modelBuffer.bufferMemory);
-    mDevice.destroyBuffer(f.modelBuffer.buffer);
+  for (vkUtil::SwapChainFrame& f : mSwapchainFrames) {
+    f.destroy();
   }
   mDevice.destroySwapchainKHR(mSwapchain);
 
