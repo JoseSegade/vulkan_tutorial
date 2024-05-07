@@ -209,12 +209,13 @@ inline SwapChainBundle create_swapchain(
     device.getSwapchainImagesKHR(bundle.swapchain);
   bundle.frames.resize(images.size());
   for (size_t i = 0; i < images.size(); ++i) {
-    bundle.frames[i].init(device, physicalDevice);
+    bundle.frames[i].mDevice = device;
+    bundle.frames[i].mPhysicalDevice = physicalDevice;
 
-    bundle.frames[i].setImage(images[i]);
-    bundle.frames[i].setImageView(
+    bundle.frames[i].mImage = images[i];
+    bundle.frames[i].mImageView =
       vkImage::make_image_view(device, images[i], format.format,
-                               vk::ImageAspectFlagBits::eColor));
+                               vk::ImageAspectFlagBits::eColor);
   }
 
   bundle.format = format.format;

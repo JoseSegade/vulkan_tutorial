@@ -26,36 +26,12 @@ class SwapChainFrame {
   SwapChainFrame();
   ~SwapChainFrame();
 
-  void init(vk::Device device, vk::PhysicalDevice physicalDevice);
-
   void make_descriptor_resources();
   void make_depth_resources();
   void write_descriptor_set();
   void destroy();
 
-  void setSyncObjects(const SyncObjects& syncObjects);
-  void setImage(const vk::Image& image);
-  void setImageView(const vk::ImageView& imageView);
-  void setDescriptorSet(const vk::DescriptorSet& descriptorSet);
-  void setDimensions(uint32_t width, uint32_t height);
-  void setCommandBuffer(const vk::CommandBuffer& commandBuffer);
-  void setFramebuffer(const vk::Framebuffer& framebuffer);
-
-  UniformBufferObject* const CameraData();
-  void* const CameraDataWriteLocation();
-  std::vector<glm::mat4>& ModelTransforms();
-  void* const ModelBufferWriteLocation();
-  vk::ImageView getImageView();
-  vk::ImageView getDepthBufferView();
-  vk::Fence getInFlight();
-  vk::Semaphore getImageAvailable();
-  vk::Semaphore getRenderFinished();
-  vk::CommandBuffer getCommandBuffer();
-  vk::Framebuffer getFramebuffer();
-  vk::DescriptorSet getDescriptorSet();
-  vk::Format getDepthFormat();
-
- private:
+ public:
   // Devices
   vk::Device               mDevice;
   vk::PhysicalDevice       mPhysicalDevice;

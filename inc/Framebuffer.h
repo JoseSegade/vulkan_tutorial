@@ -21,8 +21,8 @@ inline void make_framebuffers(
   bool debug) {
   for (size_t i = 0; i < frames->size(); ++i) {
     std::vector<vk::ImageView> attachments {
-      frames->at(i).getImageView(),
-      frames->at(i).getDepthBufferView()
+      frames->at(i).mImageView,
+      frames->at(i).mDepthBufferView
     };
 
     vk::FramebufferCreateInfo framebufferInfo {};
@@ -38,8 +38,8 @@ inline void make_framebuffers(
       if (debug) {
         printf("Creating framebuffer %ld\n", i);
       }
-      frames->at(i).setFramebuffer(
-        input.device.createFramebuffer(framebufferInfo));
+      frames->at(i).mFramebuffer =
+        input.device.createFramebuffer(framebufferInfo);
     } catch (vk::SystemError err) {
       if (debug) {
         printf("Error creating framebuffer %ld. Error: %s\n",
@@ -50,6 +50,5 @@ inline void make_framebuffers(
 }
 
 }  // namespace vkInit
-
 
 #endif  // INC_FRAMEBUFFER_H_
