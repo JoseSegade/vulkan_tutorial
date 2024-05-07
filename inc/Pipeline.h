@@ -143,7 +143,6 @@ inline vk::RenderPass make_renderpass(
   const vk::RenderPassCreateInfo renderPassInfo =
     make_renderpass_info(attachments, subpass);
 
-
   vk::RenderPass rp {};
   try {
     rp = device.createRenderPass(renderPassInfo);
@@ -215,7 +214,7 @@ inline GraphicsPipelineOutBundle make_graphics_pipeline(
 
   vk::PipelineDepthStencilStateCreateInfo depthState {};
   depthState.flags                 = vk::PipelineDepthStencilStateCreateFlags();
-  depthState.depthBoundsTestEnable = true;
+  depthState.depthTestEnable       = true;
   depthState.depthWriteEnable      = true;
   depthState.depthCompareOp        = vk::CompareOp::eLess;
   depthState.depthBoundsTestEnable = false;

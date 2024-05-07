@@ -122,6 +122,8 @@ void Engine::make_swapchain() {
   mMaxFramesInFlight = static_cast<uint32_t>(mSwapchainFrames.size());
 
   for (vkUtil::SwapChainFrame& frame : mSwapchainFrames) {
+    frame.mDevice = mDevice;
+    frame.mPhysicalDevice = mPhysicalDevice;
     frame.mWidth = mSwapchainExtent.width;
     frame.mHeight = mSwapchainExtent.height;
 
@@ -338,11 +340,11 @@ void Engine::prepare_frame(uint32_t frameIndex, Scene* scene) {
          sizeof(vkUtil::UniformBufferObject));
 
   size_t i = 0;
-  for (const glm::vec3& position : scene->getSquarePositions()) {
+  for (const glm::vec3& position : scene->getTrianglePositions()) {
     frame.mModelTransforms[i] = glm::translate(glm::mat4(1.0f), position);
     ++i;
   }
-  for (const glm::vec3& position : scene->getTrianglePositions()) {
+  for (const glm::vec3& position : scene->getSquarePositions()) {
     frame.mModelTransforms[i] = glm::translate(glm::mat4(1.0f), position);
     ++i;
   }
