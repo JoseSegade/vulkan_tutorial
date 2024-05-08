@@ -10,6 +10,7 @@
 #include "../inc/Sync.h"
 #include "../inc/Scene.h"
 #include "../inc/Descriptors.h"
+#include "../inc/ObjMesh.h"
 
 void Engine::init(
   uint32_t width, uint32_t height, GLFWwindow* window, bool debugMode) {
@@ -226,49 +227,17 @@ void Engine::finalize_setup() {
 void Engine::make_assets() {
   mMeshes = new VertexMenagerie();
 
-  std::vector<float> vertices = { {
-     0.00f, -0.05f, 0.0f, 1.0f, 0.0f, 0.5f, 0.0f,
-     0.05f,  0.05f, 0.0f, 1.0f, 0.0f, 1.0f, 1.0f,
-    -0.05f,  0.05f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f } };
-  std::vector<uint32_t> indices = { {
-    0, 1, 2 } };
+  std::unordered_map<vkMesh::MeshTypes, std::vector<const char*>>
+  model_filenames = {
+    { vkMesh::MeshTypes::GROUND, { "models/ground.obj", "models/ground.mtl" } },
+    { vkMesh::MeshTypes::GIRL, { "models/girl.obj", "models/girl.mtl" } },
+    { vkMesh::MeshTypes::SKULL, { "models/skull.obj", "models/skull.mtl" } },
+  };
 
-  vkMesh::MeshTypes type = vkMesh::MeshTypes::TRIANGLE;
-  mMeshes->consume(type, vertices, indices);
-
-  vertices = { {
-    -0.10f,  0.10f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
-    -0.10f, -0.10f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
-     0.10f, -0.10f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
-     0.10f,  0.10f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f } };
-  type = vkMesh::MeshTypes::SQUARE;
-  indices = { {
-    0, 1, 2,
-    2, 3, 0 } };
-  mMeshes->consume(type, vertices, indices);
-
-  vertices = { {
-    -0.10f, -0.05f, 0.0f, 0.0f, 1.0f, 0.00f, 0.25f,
-    -0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.30f, 0.25f,
-    -0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.20f, 0.50f,
-     0.00f, -0.10f, 0.0f, 0.0f, 1.0f, 0.50f, 0.00f,
-     0.04f, -0.05f, 0.0f, 0.0f, 1.0f, 0.70f, 0.25f,
-     0.10f, -0.05f, 0.0f, 0.0f, 1.0f, 1.00f, 0.25f,
-     0.06f,  0.00f, 0.0f, 0.0f, 1.0f, 0.80f, 0.50f,
-     0.08f,  0.10f, 0.0f, 0.0f, 1.0f, 0.90f, 1.00f,
-     0.00f,  0.02f, 0.0f, 0.0f, 1.0f, 0.50f, 0.60f,
-    -0.08f,  0.10f, 0.0f, 0.0f, 1.0f, 0.10f, 1.00f } };
-  indices = { {
-    0, 1, 2,
-    1, 3, 4,
-    2, 1, 4,
-    4, 5, 6,
-    2, 4, 6,
-    6, 7, 8,
-    2, 6, 8,
-    2, 8, 9 } };
-  type = vkMesh::MeshTypes::STAR;
-  mMeshes->consume(type, vertices, indices);
+  for (const auto& [key, value] : model_filenames) {
+    vkMesh::ObjMesh obj(value[0], value[1], glm::mat4(1.0f));
+    mMeshes->consume(key, obj.vertices, obj.indices);
+  }
 
   VertexMenagerie::FinalizationChunk finalizationChunk {};
   finalizationChunk.physicalDevice = mPhysicalDevice;
@@ -280,9 +249,9 @@ void Engine::make_assets() {
 
   // Materials
   std::unordered_map<vkMesh::MeshTypes, const char*> filenames = {
-    std::make_pair(vkMesh::MeshTypes::TRIANGLE, "./res/tex/grass_texture.jpg"),
-    std::make_pair(vkMesh::MeshTypes::SQUARE, "./res/tex/water_texture.jpg"),
-    std::make_pair(vkMesh::MeshTypes::STAR, "./res/tex/sand_texture.jpg") };
+    std::make_pair(vkMesh::MeshTypes::GROUND, "./res/tex/ground.jpg"),
+    std::make_pair(vkMesh::MeshTypes::GIRL, "./res/tex/none.jpg"),
+    std::make_pair(vkMesh::MeshTypes::SKULL, "./res/tex/skull.jpg") };
 
   vkInit::DescriptorSetLayoutData bindings;
   bindings.count = 1;
@@ -316,9 +285,9 @@ void Engine::prepare_scene(vk::CommandBuffer commandBuffer) {
 }
 
 void Engine::prepare_frame(uint32_t frameIndex, Scene* scene) {
-  glm::vec3 eye    = {  1.0f,  0.0f, -1.0f };
-  glm::vec3 center = {  0.0f,  0.0f,  0.0f };
-  glm::vec3 up     = {  0.0f,  0.0f, -1.0f };
+  glm::vec3 eye    = {  1.0f,  0.0f,  1.0f };
+  glm::vec3 center = {  1.0f,  0.0f,  1.0f };
+  glm::vec3 up     = {  0.0f,  0.0f,  1.0f };
 
   glm::mat4 view = glm::lookAt(eye, center, up);
   float povAngle = glm::radians(45.0f);
@@ -326,7 +295,7 @@ void Engine::prepare_frame(uint32_t frameIndex, Scene* scene) {
     static_cast<float>(mSwapchainExtent.width) /
     static_cast<float>(mSwapchainExtent.height);
   float near = 0.1f;
-  float far = 10.0f;
+  float far = 100.0f;
   glm::mat4 proj = glm::perspective(povAngle, aspectRatio, near, far);
   proj[1][1] *= -1;
 
@@ -340,17 +309,11 @@ void Engine::prepare_frame(uint32_t frameIndex, Scene* scene) {
          sizeof(vkUtil::UniformBufferObject));
 
   size_t i = 0;
-  for (const glm::vec3& position : scene->getTrianglePositions()) {
-    frame.mModelTransforms[i] = glm::translate(glm::mat4(1.0f), position);
-    ++i;
-  }
-  for (const glm::vec3& position : scene->getSquarePositions()) {
-    frame.mModelTransforms[i] = glm::translate(glm::mat4(1.0f), position);
-    ++i;
-  }
-  for (const glm::vec3& position : scene->getStarPositions()) {
-    frame.mModelTransforms[i] = glm::translate(glm::mat4(1.0f), position);
-    ++i;
+  for (const auto& [key, value] : scene->positions) {
+    for (const glm::vec3& position : value) {
+      frame.mModelTransforms[i] = glm::translate(glm::mat4(1.0f), position);
+      ++i;
+    }
   }
   memcpy(frame.mModelBufferWriteLocation,
          frame.mModelTransforms.data(),
@@ -445,18 +408,14 @@ void Engine::record_draw_commands(vk::CommandBuffer commandBuffer,
 
   {
     uint32_t startInstance = 0;
-    uint32_t instanceCount =
-      static_cast<uint32_t>(scene->getTrianglePositions().size());
-    render_objects(commandBuffer, vkMesh::MeshTypes::TRIANGLE,
-                   &startInstance, instanceCount);
-    instanceCount =
-      static_cast<uint32_t>(scene->getSquarePositions().size());
-    render_objects(commandBuffer, vkMesh::MeshTypes::SQUARE,
-                   &startInstance, instanceCount);
-    instanceCount =
-      static_cast<uint32_t>(scene->getStarPositions().size());
-    render_objects(commandBuffer, vkMesh::MeshTypes::STAR,
-                   &startInstance, instanceCount);
+    for (const auto& [key, val] : scene->positions) {
+      render_objects(
+        commandBuffer,
+        key,
+        &startInstance,
+        static_cast<uint32_t>(val.size())
+      );
+    }
   }
 
   commandBuffer.endRenderPass();

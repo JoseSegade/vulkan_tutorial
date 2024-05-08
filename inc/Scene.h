@@ -4,6 +4,7 @@
 
 #include "Common.h"
 #include "Mesh.h"
+#include <unordered_map>
 #include <vector>
 
 class Scene {
@@ -11,15 +12,8 @@ class Scene {
   Scene();
 
   void init();
-  const std::vector<glm::vec3>& getTrianglePositions();
-  const std::vector<glm::vec3>& getSquarePositions();
-  const std::vector<glm::vec3>& getStarPositions();
-  const std::vector<glm::vec3>& getMeshPosition(vkMesh::MeshTypes type);
 
- private:
-  std::vector<glm::vec3> mTrianglePositions {};
-  std::vector<glm::vec3> mSquarePositions {};
-  std::vector<glm::vec3> mStarPositions {};
+  std::unordered_map<vkMesh::MeshTypes, std::vector<glm::vec3>> positions;
 };
 
 #endif  // INC_SCENE_H_

@@ -148,7 +148,7 @@ inline vk::RenderPass make_renderpass(
     rp = device.createRenderPass(renderPassInfo);
   } catch (vk::SystemError err) {
     if (debug) {
-      printf("Filed to create render pass. Error %s\n", err.what());
+      printf("Failed to create render pass. Error %s\n", err.what());
     }
   }
 
@@ -249,7 +249,7 @@ inline GraphicsPipelineOutBundle make_graphics_pipeline(
   rasterizer.polygonMode             = vk::PolygonMode::eFill;
   rasterizer.lineWidth               = 1.0f;
   rasterizer.cullMode                = vk::CullModeFlagBits::eBack;
-  rasterizer.frontFace               = vk::FrontFace::eClockwise;
+  rasterizer.frontFace               = vk::FrontFace::eCounterClockwise;
   rasterizer.depthBiasEnable         = VK_FALSE;
 
   vk::PipelineMultisampleStateCreateInfo multisampling {};

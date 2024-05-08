@@ -8,13 +8,13 @@
 namespace vkMesh {
 
 enum class MeshTypes : uint32_t {
-  TRIANGLE,
-  SQUARE,
-  STAR
+  GROUND,
+  GIRL,
+  SKULL,
 };
 
-// 2 pos (x, y) 3 color (r, g, b) 2 texcoord (u, v)
-static const uint32_t VERTEX_COMPONENTS = 7;
+// 3 pos (x, y) 3 color (r, g, b) 2 texcoord (u, v)
+static const uint32_t VERTEX_COMPONENTS = 8;
 
 inline vk::VertexInputBindingDescription getPosColorBindingDescription() {
   vk::VertexInputBindingDescription bindingDescription {};
@@ -33,20 +33,20 @@ getPosColorAttributeDescriptions() {
   // Pos
   attributes[0].binding  = 0;
   attributes[0].location = 0;
-  attributes[0].format   = vk::Format::eR32G32Sfloat;
+  attributes[0].format   = vk::Format::eR32G32B32Sfloat;
   attributes[0].offset   = 0;
 
   // Color
   attributes[1].binding  = 0;
   attributes[1].location = 1;
   attributes[1].format   = vk::Format::eR32G32B32Sfloat;
-  attributes[1].offset   = 2 * sizeof(float);
+  attributes[1].offset   = 3 * sizeof(float);
 
   // TexCoord
   attributes[2].binding  = 0;
   attributes[2].location = 2;
   attributes[2].format   = vk::Format::eR32G32Sfloat;
-  attributes[2].offset   = 5 * sizeof(float);
+  attributes[2].offset   = 6 * sizeof(float);
 
   return attributes;
 }

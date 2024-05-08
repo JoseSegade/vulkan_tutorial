@@ -15,7 +15,8 @@ VertexMenagerie::~VertexMenagerie() {
 void VertexMenagerie::consume(
   vkMesh::MeshTypes type,
   const std::vector<float>& vertexData,
-  const std::vector<Index>& indexData) {
+  const std::vector<Index>& indexData
+) {
   uint32_t vertexCount =
     static_cast<uint32_t>(vertexData.size() / vkMesh::VERTEX_COMPONENTS);
   uint32_t indexCount =
@@ -98,6 +99,8 @@ void VertexMenagerie::finalize(const FinalizationChunk& input) {
     mDevice.destroyBuffer(stagingBuffer.buffer);
     mDevice.freeMemory(stagingBuffer.bufferMemory);
   }
+
+  mVertexLump.clear();
 }
 
 const vkUtil::Buffer& VertexMenagerie::getVertexBuffer() {

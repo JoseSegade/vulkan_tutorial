@@ -9,8 +9,6 @@
 #include <unordered_map>
 
 class VertexMenagerie {
-  using Index = uint32_t;
-
  public:
   struct FinalizationChunk {
     vk::PhysicalDevice physicalDevice;
