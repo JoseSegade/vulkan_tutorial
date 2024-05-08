@@ -82,7 +82,7 @@ inline vk::AttachmentDescription make_depth_attachment(
   depthAttachment.format         = depthFormat;
   depthAttachment.samples        = vk::SampleCountFlagBits::e1;
   depthAttachment.loadOp         = vk::AttachmentLoadOp::eClear;
-  depthAttachment.storeOp        = vk::AttachmentStoreOp::eStore;
+  depthAttachment.storeOp        = vk::AttachmentStoreOp::eDontCare;
   depthAttachment.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;
   depthAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
   depthAttachment.initialLayout  = vk::ImageLayout::eUndefined;
@@ -95,7 +95,8 @@ inline vk::AttachmentDescription make_depth_attachment(
 inline vk::AttachmentReference make_depth_attachment_reference() {
   vk::AttachmentReference depthAttachmentRef {};
   depthAttachmentRef.attachment = 1;
-  depthAttachmentRef.layout     = vk::ImageLayout::eDepthAttachmentOptimal;
+  depthAttachmentRef.layout     =
+    vk::ImageLayout::eDepthStencilAttachmentOptimal;
   
   return depthAttachmentRef;
 }
@@ -116,11 +117,11 @@ inline vk::RenderPassCreateInfo make_renderpass_info(
   const std::vector<vk::AttachmentDescription>& attachments,
   const vk::SubpassDescription& subpass) {
   vk::RenderPassCreateInfo renderPassInfo {};
-  renderPassInfo.flags = vk::RenderPassCreateFlags();
+  renderPassInfo.flags           = vk::RenderPassCreateFlags();
   renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-  renderPassInfo.pAttachments = attachments.data();
-  renderPassInfo.subpassCount = 1;
-  renderPassInfo.pSubpasses = &subpass;
+  renderPassInfo.pAttachments    = attachments.data();
+  renderPassInfo.subpassCount    = 1;
+  renderPassInfo.pSubpasses      = &subpass;
 
   return renderPassInfo;
 }
