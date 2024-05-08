@@ -11,6 +11,11 @@ vkMesh::ObjMesh::ObjMesh(
 
   std::ifstream file;
   file.open(mtlFilepath);
+
+  if (!file.is_open()) {
+    throw std::runtime_error("Error opening file " + std::string(mtlFilepath));
+  }
+
   std::string line;
   std::string materialName;
   std::vector<std::string> words;
@@ -34,6 +39,9 @@ vkMesh::ObjMesh::ObjMesh(
 
   file.close();
   file.open(objFilepath);
+  if (!file.is_open()) {
+    throw std::runtime_error("Error opening file " + std::string(mtlFilepath));
+  }
 
   while (std::getline(file, line)) {
     words = split(line, " ");

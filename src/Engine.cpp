@@ -229,9 +229,12 @@ void Engine::make_assets() {
 
   std::unordered_map<vkMesh::MeshTypes, std::vector<const char*>>
   model_filenames = {
-    { vkMesh::MeshTypes::GROUND, { "models/ground.obj", "models/ground.mtl" } },
-    { vkMesh::MeshTypes::GIRL, { "models/girl.obj", "models/girl.mtl" } },
-    { vkMesh::MeshTypes::SKULL, { "models/skull.obj", "models/skull.mtl" } },
+    { vkMesh::MeshTypes::GROUND,
+      { "./res/obj/ground.obj", "./res/obj/ground.mtl" } },
+    { vkMesh::MeshTypes::GIRL,
+      { "./res/obj/girl.obj", "./res/obj/girl.mtl" } },
+    { vkMesh::MeshTypes::SKULL,
+      { "./res/obj/skull.obj", "./res/obj/skull.mtl" } },
   };
 
   for (const auto& [key, value] : model_filenames) {
@@ -250,8 +253,8 @@ void Engine::make_assets() {
   // Materials
   std::unordered_map<vkMesh::MeshTypes, const char*> filenames = {
     std::make_pair(vkMesh::MeshTypes::GROUND, "./res/tex/ground.jpg"),
-    std::make_pair(vkMesh::MeshTypes::GIRL, "./res/tex/none.jpg"),
-    std::make_pair(vkMesh::MeshTypes::SKULL, "./res/tex/skull.jpg") };
+    std::make_pair(vkMesh::MeshTypes::GIRL, "./res/tex/none.png"),
+    std::make_pair(vkMesh::MeshTypes::SKULL, "./res/tex/skull.png") };
 
   vkInit::DescriptorSetLayoutData bindings;
   bindings.count = 1;
@@ -285,11 +288,12 @@ void Engine::prepare_scene(vk::CommandBuffer commandBuffer) {
 }
 
 void Engine::prepare_frame(uint32_t frameIndex, Scene* scene) {
-  glm::vec3 eye    = {  1.0f,  0.0f,  1.0f };
+  glm::vec3 eye    = { -1.0f,  0.0f,  1.0f };
   glm::vec3 center = {  1.0f,  0.0f,  1.0f };
   glm::vec3 up     = {  0.0f,  0.0f,  1.0f };
 
   glm::mat4 view = glm::lookAt(eye, center, up);
+
   float povAngle = glm::radians(45.0f);
   float aspectRatio =
     static_cast<float>(mSwapchainExtent.width) /
