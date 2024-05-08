@@ -237,8 +237,25 @@ void Engine::make_assets() {
       { "./res/obj/skull.obj", "./res/obj/skull.mtl" } },
   };
 
+  std::unordered_map<vkMesh::MeshTypes, glm::mat4>
+  preTransforms = {
+    { vkMesh::MeshTypes::GROUND,
+      glm::mat4(1.0f)
+    },
+    { vkMesh::MeshTypes::GIRL,
+      glm::rotate(
+        glm::mat4(1.0f),
+        glm::radians(180.0f),
+        glm::vec3(0.0f, 0.0f, 1.0f)
+      ) 
+    },
+    { vkMesh::MeshTypes::SKULL,
+      glm::mat4(1.0f)
+    },
+  };
+
   for (const auto& [key, value] : model_filenames) {
-    vkMesh::ObjMesh obj(value[0], value[1], glm::mat4(1.0f));
+    vkMesh::ObjMesh obj(value[0], value[1], preTransforms[key]);
     mMeshes->consume(key, obj.vertices, obj.indices);
   }
 
@@ -279,7 +296,8 @@ void Engine::make_assets() {
 
 void Engine::prepare_scene(vk::CommandBuffer commandBuffer) {
   vk::Buffer vertexBuffers[] = {
-    mMeshes->getVertexBuffer().buffer };
+    mMeshes->getVertexBuffer().buffer 
+  };
 
   vk::DeviceSize offsets[] = { 0 };
   commandBuffer.bindVertexBuffers(0, 1, vertexBuffers, offsets);

@@ -13,8 +13,8 @@ enum class MeshTypes : uint32_t {
   SKULL,
 };
 
-// 3 pos (x, y) 3 color (r, g, b) 2 texcoord (u, v)
-static const uint32_t VERTEX_COMPONENTS = 8;
+// 3 pos 3 color 2 texcoord 3 normal
+static const uint32_t VERTEX_COMPONENTS = 11;
 
 inline vk::VertexInputBindingDescription getPosColorBindingDescription() {
   vk::VertexInputBindingDescription bindingDescription {};
@@ -28,7 +28,7 @@ inline vk::VertexInputBindingDescription getPosColorBindingDescription() {
 inline std::vector<vk::VertexInputAttributeDescription>
 getPosColorAttributeDescriptions() {
   std::vector<vk::VertexInputAttributeDescription> attributes {};
-  attributes.resize(3);
+  attributes.resize(4);
 
   // Pos
   attributes[0].binding  = 0;
@@ -47,6 +47,12 @@ getPosColorAttributeDescriptions() {
   attributes[2].location = 2;
   attributes[2].format   = vk::Format::eR32G32Sfloat;
   attributes[2].offset   = 6 * sizeof(float);
+
+  // Normal
+  attributes[3].binding  = 0;
+  attributes[3].location = 3;
+  attributes[3].format   = vk::Format::eR32G32B32Sfloat;
+  attributes[3].offset   = 8 * sizeof(float);
 
   return attributes;
 }
