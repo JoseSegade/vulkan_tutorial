@@ -9,6 +9,16 @@
 #include <vector>
 #include <string>
 
+enum class PipelineTypes {
+  SKY,
+  STANDARD,
+};
+
+const static std::vector<PipelineTypes> sPipelineTypes = { {
+  PipelineTypes::SKY,
+  PipelineTypes::STANDARD
+} };
+
 namespace vkInit {
 
 struct GraphicsPipelineInBundle {
@@ -18,6 +28,7 @@ struct GraphicsPipelineInBundle {
   vk::Extent2D                         extent;
   vk::Format                           swapchainFormat;
   vk::Format                           depthFormat;
+  bool                                 enableDepth;
   std::vector<vk::DescriptorSetLayout> descriptorSetLayouts;
 };
 
@@ -52,17 +63,22 @@ inline vk::PipelineLayout make_pipeline_layout(
 }
 
 inline vk::AttachmentDescription make_color_attachment(
-  const vk::Format& swapchainImageFormat) {
+  const vk::Format& format,
+  vk::AttachmentLoadOp loadOp = vk::AttachmentLoadOp::eDontCare,
+  vk::AttachmentStoreOp storeOp = vk::AttachmentStoreOp::eStore,
+  vk::ImageLayout initialLayout = vk::ImageLayout::eUndefined,
+  vk::ImageLayout finalLayout = vk::ImageLayout::ePresentSrcKHR
+) {
   vk::AttachmentDescription colorAttachment {};
   colorAttachment.flags          = vk::AttachmentDescriptionFlags();
-  colorAttachment.format         = swapchainImageFormat;
+  colorAttachment.format         = format;
   colorAttachment.samples        = vk::SampleCountFlagBits::e1;
-  colorAttachment.loadOp         = vk::AttachmentLoadOp::eClear;
-  colorAttachment.storeOp        = vk::AttachmentStoreOp::eStore;
+  colorAttachment.loadOp         = loadOp;
+  colorAttachment.storeOp        = storeOp;
   colorAttachment.stencilLoadOp  = vk::AttachmentLoadOp::eDontCare;
   colorAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-  colorAttachment.initialLayout  = vk::ImageLayout::eUndefined;
-  colorAttachment.finalLayout    = vk::ImageLayout::ePresentSrcKHR;
+  colorAttachment.initialLayout  = initialLayout;
+  colorAttachment.finalLayout    = finalLayout;
 
   return colorAttachment;
 }
@@ -76,7 +92,8 @@ inline vk::AttachmentReference make_color_attachment_reference() {
 }
 
 inline vk::AttachmentDescription make_depth_attachment(
-  const vk::Format& depthFormat) {
+  const vk::Format& depthFormat
+) {
   vk::AttachmentDescription depthAttachment {};
   depthAttachment.flags          = vk::AttachmentDescriptionFlags();
   depthAttachment.format         = depthFormat;
@@ -108,7 +125,11 @@ inline vk::SubpassDescription make_subpass(
   subpass.pipelineBindPoint       = vk::PipelineBindPoint::eGraphics;
   subpass.colorAttachmentCount    = 1;
   subpass.pColorAttachments       = &attachments[0];
-  subpass.pDepthStencilAttachment = &attachments[1];
+  if (attachments.size() > 1) {
+    subpass.pDepthStencilAttachment = &attachments[1];
+  } else {
+    subpass.pDepthStencilAttachment = nullptr;
+  }
 
   return subpass;
 }
@@ -130,15 +151,30 @@ inline vk::RenderPass make_renderpass(
   vk::Device device,
   vk::Format swapchainImageFormat,
   vk::Format depthFormat,
-  bool debug) {
+  bool enableDepth,
+  bool keepFrameColor,
+  bool debug
+) {
   std::vector<vk::AttachmentDescription> attachments;
   std::vector<vk::AttachmentReference> attachmentReferences;
 
-  attachments.push_back(make_color_attachment(swapchainImageFormat));
+  attachments.push_back(make_color_attachment(
+    swapchainImageFormat,
+    keepFrameColor 
+      ? vk::AttachmentLoadOp::eLoad 
+      : vk::AttachmentLoadOp::eDontCare,
+    vk::AttachmentStoreOp::eStore,
+    keepFrameColor
+      ? vk::ImageLayout::ePresentSrcKHR
+      : vk::ImageLayout::eUndefined,
+    vk::ImageLayout::ePresentSrcKHR
+  ));
   attachmentReferences.push_back(make_color_attachment_reference());
 
-  attachments.push_back(make_depth_attachment(depthFormat));
-  attachmentReferences.push_back(make_depth_attachment_reference());
+  if (enableDepth) {
+    attachments.push_back(make_depth_attachment(depthFormat));
+    attachmentReferences.push_back(make_depth_attachment_reference());
+  }
 
   const vk::SubpassDescription subpass = make_subpass(attachmentReferences);
   const vk::RenderPassCreateInfo renderPassInfo =
@@ -158,7 +194,9 @@ inline vk::RenderPass make_renderpass(
 
 inline GraphicsPipelineOutBundle make_graphics_pipeline(
   const GraphicsPipelineInBundle& specification,
-  bool debug) {
+  bool keepFrameColor,
+  bool debug
+) {
   GraphicsPipelineOutBundle out {};
 
   vk::VertexInputBindingDescription bindingDescription =
@@ -293,7 +331,10 @@ inline GraphicsPipelineOutBundle make_graphics_pipeline(
     specification.device,
     specification.swapchainFormat,
     specification.depthFormat,
-    debug);
+    specification.enableDepth,
+    keepFrameColor,
+    debug
+  );
 
   vk::GraphicsPipelineCreateInfo pipelineInfo {};
   pipelineInfo.flags               = vk::PipelineCreateFlags();
@@ -331,8 +372,15 @@ inline GraphicsPipelineOutBundle make_graphics_pipeline(
   out.renderPass       = renderPass;
   out.graphicsPipeline = graphicsPipeline;
 
-  specification.device.destroyShaderModule(vertexShader);
-  specification.device.destroyShaderModule(fragmentShader);
+  if (vertexShader) {
+    specification.device.destroyShaderModule(vertexShader);
+    vertexShader = nullptr;
+  }
+  if (fragmentShader) {
+    specification.device.destroyShaderModule(fragmentShader);
+    fragmentShader = nullptr;
+  }
+  shaderStages.clear();
 
   return out;
 }

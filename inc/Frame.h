@@ -4,14 +4,22 @@
 
 #include "Common.h"
 #include "Memory.h"
+#include "Pipeline.h"
+#include <unordered_map>
 #include <vector>
 
 namespace vkUtil {
 
-struct UniformBufferObject {
+struct CameraMatrices {
   glm::mat4 view;
   glm::mat4 projection;
   glm::mat4 viewProjection;
+};
+
+struct CameraVectors {
+  glm::vec4 forwards;
+  glm::vec4 right;
+  glm::vec4 up;
 };
 
 class SwapChainFrame {
@@ -29,6 +37,7 @@ class SwapChainFrame {
   void make_descriptor_resources();
   void make_depth_resources();
   void write_descriptor_set();
+  void record_write_operations();
   void destroy();
 
  public:
@@ -39,7 +48,9 @@ class SwapChainFrame {
   // Swapchain
   vk::Image                mImage;
   vk::ImageView            mImageView;
-  vk::Framebuffer          mFramebuffer;
+
+  std::unordered_map<PipelineTypes, vk::Framebuffer> mFramebuffer;
+
   vk::Image                mDepthBuffer;
   vk::DeviceMemory         mDepthBufferMemory;
   vk::ImageView            mDepthBufferView;
@@ -55,18 +66,24 @@ class SwapChainFrame {
   vk::Semaphore            mRenderFinished;
   vk::Fence                mInFlight;
 
-  // Resources
-  UniformBufferObject      mCameraData;
-  Buffer                   mCameraDataBuffer;
-  void*                    mCameraDataWriteLocation;
+  CameraMatrices           mCameraMatrixData;
+  Buffer                   mCameraMatrixBuffer;
+  void*                    mCameraMatrixWriteLocation;
+
+  CameraVectors            mCameraVectorsData;
+  Buffer                   mCameraVectorsBuffer;
+  void*                    mCameraVectorsWriteLocation;
+
   std::vector<glm::mat4>   mModelTransforms;
   Buffer                   mModelBuffer;
   void*                    mModelBufferWriteLocation;
 
-  // Resource descriptors
-  vk::DescriptorBufferInfo mUniformBufferDescriptor;
+  vk::DescriptorBufferInfo mCameraMatrixDescriptor;
+  vk::DescriptorBufferInfo mCameraVectorsDescriptor;
   vk::DescriptorBufferInfo mModelBufferDescriptor;
-  vk::DescriptorSet        mDescriptorSet;
+
+  std::unordered_map<PipelineTypes, vk::DescriptorSet> mDescriptorSet;
+  std::vector<vk::WriteDescriptorSet>                  mWriteOps;
 };
 
 }  // namespace vkUtil

@@ -213,9 +213,14 @@ inline SwapChainBundle create_swapchain(
     bundle.frames[i].mPhysicalDevice = physicalDevice;
 
     bundle.frames[i].mImage = images[i];
-    bundle.frames[i].mImageView =
-      vkImage::make_image_view(device, images[i], format.format,
-                               vk::ImageAspectFlagBits::eColor);
+    bundle.frames[i].mImageView = vkImage::make_image_view(
+      device,
+      images[i],
+      format.format,
+      vk::ImageAspectFlagBits::eColor,
+      vk::ImageViewType::e2D,
+      1
+    );
   }
 
   bundle.format = format.format;

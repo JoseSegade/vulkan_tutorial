@@ -44,21 +44,28 @@ void Engine::destroy() {
 
   mDevice.destroyCommandPool(mCommandPool);
 
-  mDevice.destroyPipeline(mGraphicsPipeline);
-  mDevice.destroyPipelineLayout(mPipelineLayout);
-  mDevice.destroyRenderPass(mRenderPass);
+  for (PipelineTypes pt : sPipelineTypes) {
+    mDevice.destroyPipeline(mGraphicsPipeline[pt]);
+    mDevice.destroyPipelineLayout(mPipelineLayout[pt]);
+    mDevice.destroyRenderPass(mRenderPass[pt]);
+  }
 
   cleanup_swapchain();
 
-  mDevice.destroyDescriptorSetLayout(mFrameSetLayout);
+  for (PipelineTypes pt : sPipelineTypes) {
+    mDevice.destroyDescriptorSetLayout(mFrameSetLayout[pt]);
+  }
 
   delete mMeshes;
 
   for (const auto& [_, texture] : mMaterials) {
     delete texture;
   }
+  delete mSkyCubeMap;
 
-  mDevice.destroyDescriptorSetLayout(mMeshSetLayout);
+  for (PipelineTypes pt : sPipelineTypes) {
+    mDevice.destroyDescriptorSetLayout(mMeshSetLayout[pt]);
+  }
   mDevice.destroyDescriptorPool(mMeshDescriptorPool);
 
   mDevice.destroy();
@@ -123,10 +130,10 @@ void Engine::make_swapchain() {
   mMaxFramesInFlight = static_cast<uint32_t>(mSwapchainFrames.size());
 
   for (vkUtil::SwapChainFrame& frame : mSwapchainFrames) {
-    frame.mDevice = mDevice;
+    frame.mDevice         = mDevice;
     frame.mPhysicalDevice = mPhysicalDevice;
-    frame.mWidth = mSwapchainExtent.width;
-    frame.mHeight = mSwapchainExtent.height;
+    frame.mWidth          = mSwapchainExtent.width;
+    frame.mHeight         = mSwapchainExtent.height;
 
     frame.make_depth_resources();
   }
@@ -159,6 +166,17 @@ void Engine::recreate_swapchain() {
 
 void Engine::make_descriptor_set_layouts() {
   {
+    vkInit::DescriptorSetLayoutData skyBindings;
+    skyBindings.count = 1;
+    skyBindings.indices.push_back(0);
+    skyBindings.types.push_back(vk::DescriptorType::eUniformBuffer);
+    skyBindings.counts.push_back(1);
+    skyBindings.stages.push_back(vk::ShaderStageFlagBits::eVertex);
+
+    mFrameSetLayout[PipelineTypes::SKY] =
+      vkInit::make_descriptor_set_layout(mDevice, skyBindings, mHasDebug);
+  }
+  {
     vkInit::DescriptorSetLayoutData frameBindings;
     frameBindings.count = 2;
     frameBindings.indices.push_back(0);
@@ -171,10 +189,9 @@ void Engine::make_descriptor_set_layouts() {
     frameBindings.counts.push_back(1);
     frameBindings.stages.push_back(vk::ShaderStageFlagBits::eVertex);
 
-    mFrameSetLayout = vkInit::make_descriptor_set_layout(
-      mDevice, frameBindings, mHasDebug);
+    mFrameSetLayout[PipelineTypes::STANDARD] =
+      vkInit::make_descriptor_set_layout(mDevice, frameBindings, mHasDebug);
   }
-
   {
     vkInit::DescriptorSetLayoutData meshBindings;
     meshBindings.count = 1;
@@ -183,27 +200,55 @@ void Engine::make_descriptor_set_layouts() {
     meshBindings.counts.push_back(1);
     meshBindings.stages.push_back(vk::ShaderStageFlagBits::eFragment);
 
-    mMeshSetLayout = vkInit::make_descriptor_set_layout(
-      mDevice, meshBindings, mHasDebug);
+    mMeshSetLayout[PipelineTypes::SKY] =
+      vkInit::make_descriptor_set_layout(mDevice, meshBindings, mHasDebug);
+    mMeshSetLayout[PipelineTypes::STANDARD] =
+      vkInit::make_descriptor_set_layout(mDevice, meshBindings, mHasDebug);
   }
 }
 
 void Engine::make_pipeline() {
-  vkInit::GraphicsPipelineInBundle specification {};
-  specification.device               = mDevice;
-  specification.vertexFilepath       = "./bin/shaders/default.vert.spv";
-  specification.fragmenFilepath      = "./bin/shaders/default.frag.spv";
-  specification.extent               = mSwapchainExtent;
-  specification.swapchainFormat      = mSwapchainFormat;
-  specification.depthFormat          = mSwapchainFrames[0].mDepthFormat;
-  specification.descriptorSetLayouts = { mFrameSetLayout, mMeshSetLayout };
+  {
+    vkInit::GraphicsPipelineInBundle specification {};
+    specification.device               = mDevice;
+    specification.vertexFilepath       = "./bin/shaders/default.vert.spv";
+    specification.fragmenFilepath      = "./bin/shaders/default.frag.spv";
+    specification.extent               = mSwapchainExtent;
+    specification.swapchainFormat      = mSwapchainFormat;
+    specification.depthFormat          = mSwapchainFrames[0].mDepthFormat;
+    specification.enableDepth          = true;
+    specification.descriptorSetLayouts = {
+      mFrameSetLayout[PipelineTypes::STANDARD],
+      mMeshSetLayout[PipelineTypes::STANDARD]
+    };
 
-  vkInit::GraphicsPipelineOutBundle output =
-    vkInit::make_graphics_pipeline(specification, mHasDebug);
+    vkInit::GraphicsPipelineOutBundle output =
+      vkInit::make_graphics_pipeline(specification, true, mHasDebug);
 
-  mPipelineLayout   = output.pipelineLayout;
-  mRenderPass       = output.renderPass;
-  mGraphicsPipeline = output.graphicsPipeline;
+    mPipelineLayout[PipelineTypes::STANDARD]   = output.pipelineLayout;
+    mRenderPass[PipelineTypes::STANDARD]       = output.renderPass;
+    mGraphicsPipeline[PipelineTypes::STANDARD] = output.graphicsPipeline;
+  }
+  {
+    vkInit::GraphicsPipelineInBundle specification {};
+    specification.device               = mDevice;
+    specification.vertexFilepath       = "./bin/shaders/sky_shader.vert.spv";
+    specification.fragmenFilepath      = "./bin/shaders/sky_shader.frag.spv";
+    specification.extent               = mSwapchainExtent;
+    specification.swapchainFormat      = mSwapchainFormat;
+    specification.enableDepth          = false;
+    specification.descriptorSetLayouts = {
+      mFrameSetLayout[PipelineTypes::SKY],
+      mMeshSetLayout[PipelineTypes::SKY]
+    };
+
+    vkInit::GraphicsPipelineOutBundle output =
+      vkInit::make_graphics_pipeline(specification, true, mHasDebug);
+
+    mPipelineLayout[PipelineTypes::SKY]   = output.pipelineLayout;
+    mRenderPass[PipelineTypes::SKY]       = output.renderPass;
+    mGraphicsPipeline[PipelineTypes::SKY] = output.graphicsPipeline;
+  }
 }
 
 void Engine::finalize_setup() {
@@ -277,20 +322,46 @@ void Engine::make_assets() {
   bindings.count = 1;
   bindings.types.push_back(vk::DescriptorType::eCombinedImageSampler);
   mMeshDescriptorPool = vkInit::make_descriptor_pool(
-    mDevice, static_cast<uint32_t>(filenames.size()), bindings, mHasDebug);
+    mDevice,
+    static_cast<uint32_t>(filenames.size()) + 1, // 1 for the sky cubemap
+    bindings,
+    mHasDebug
+  );
 
-  vkImage::TextureInputChunk textureInfo {};
-  textureInfo.commandBuffer  = mMainCommandBuffer;
-  textureInfo.queue          = mGraphicsQueue;
-  textureInfo.device         = mDevice;
-  textureInfo.physicalDevice = mPhysicalDevice;
-  textureInfo.layout         = mMeshSetLayout;
-  textureInfo.descriptorPool = mMeshDescriptorPool;
+  {
+    vkImage::TextureInputChunk textureInfo {};
+    textureInfo.commandBuffer  = mMainCommandBuffer;
+    textureInfo.queue          = mGraphicsQueue;
+    textureInfo.device         = mDevice;
+    textureInfo.physicalDevice = mPhysicalDevice;
+    textureInfo.layout         = mMeshSetLayout[PipelineTypes::STANDARD];
+    textureInfo.descriptorPool = mMeshDescriptorPool;
 
-  for (const auto& [type, filename] : filenames) {
-    textureInfo.filename = filename;
-    mMaterials[type] = new vkImage::Texture{};
-    mMaterials[type]->init(textureInfo);
+    for (const auto& [type, filename] : filenames) {
+      textureInfo.filename = filename;
+      mMaterials[type] = new vkImage::Texture{};
+      mMaterials[type]->init(textureInfo);
+    }
+  }
+
+  {
+    vkImage::CubeMapInputChunk cubeMapInfo {};
+    cubeMapInfo.commandBuffer  = mMainCommandBuffer;
+    cubeMapInfo.queue          = mGraphicsQueue;
+    cubeMapInfo.device         = mDevice;
+    cubeMapInfo.physicalDevice = mPhysicalDevice;
+    cubeMapInfo.layout = mMeshSetLayout[PipelineTypes::SKY];
+    cubeMapInfo.descriptorPool = mMeshDescriptorPool;
+    cubeMapInfo.filenames = { {
+      "./res/tex/sky_front.png",
+      "./res/tex/sky_back.png",
+      "./res/tex/sky_left.png",
+      "./res/tex/sky_right.png",
+      "./res/tex/sky_bottom.png",
+      "./res/tex/sky_top.png",
+    } };
+    mSkyCubeMap = new vkImage::CubeMap {};
+    mSkyCubeMap->init(cubeMapInfo);
   }
 }
 
@@ -306,6 +377,20 @@ void Engine::prepare_scene(vk::CommandBuffer commandBuffer) {
 }
 
 void Engine::prepare_frame(uint32_t frameIndex, Scene* scene) {
+  vkUtil::SwapChainFrame& frame = mSwapchainFrames[frameIndex];
+
+  glm::vec4 cam_vec_forwards = {  1.0f,  0.0f,  0.0f, 0.0f };
+  glm::vec4 cam_vec_right    = {  0.0f, -1.0f,  0.0f, 0.0f };
+  glm::vec4 cam_vec_up       = {  0.0f,  0.0f,  1.0f, 0.0f };
+
+  frame.mCameraVectorsData.forwards = cam_vec_forwards;
+  frame.mCameraVectorsData.right    = cam_vec_forwards;
+  frame.mCameraVectorsData.up       = cam_vec_forwards;
+
+  memcpy(frame.mCameraVectorsWriteLocation,
+         &frame.mCameraVectorsData,
+         sizeof(vkUtil::CameraVectors));
+
   glm::vec3 eye    = { -1.0f,  0.0f,  1.0f };
   glm::vec3 center = {  1.0f,  0.0f,  1.0f };
   glm::vec3 up     = {  0.0f,  0.0f,  1.0f };
@@ -321,14 +406,13 @@ void Engine::prepare_frame(uint32_t frameIndex, Scene* scene) {
   glm::mat4 proj = glm::perspective(povAngle, aspectRatio, near, far);
   proj[1][1] *= -1;
 
-  vkUtil::SwapChainFrame& frame = mSwapchainFrames[frameIndex];
-  frame.mCameraData.view = view;
-  frame.mCameraData.projection = proj;
-  frame.mCameraData.viewProjection = proj * view;
+  frame.mCameraMatrixData.view = view;
+  frame.mCameraMatrixData.projection = proj;
+  frame.mCameraMatrixData.viewProjection = proj * view;
 
-  memcpy(frame.mCameraDataWriteLocation,
-         &frame.mCameraData,
-         sizeof(vkUtil::UniformBufferObject));
+  memcpy(frame.mCameraMatrixWriteLocation,
+         &frame.mCameraMatrixData,
+         sizeof(vkUtil::CameraMatrices));
 
   size_t i = 0;
   for (const auto& [key, value] : scene->positions) {
@@ -359,7 +443,7 @@ void Engine::make_frame_resources() {
   bindings.types.push_back(vk::DescriptorType::eUniformBuffer);
   mFrameDescriptorPool = vkInit::make_descriptor_pool(
     mDevice,
-    static_cast<uint32_t>(mSwapchainFrames.size()),
+    static_cast<uint32_t>(mSwapchainFrames.size()) * 2,
     bindings,
     mHasDebug);
 
@@ -371,8 +455,22 @@ void Engine::make_frame_resources() {
 
     f.make_descriptor_resources();
 
-    f.mDescriptorSet = vkInit::allocate_descriptor_set(
-       mDevice, mFrameDescriptorPool, mFrameSetLayout, mHasDebug);
+    f.mDescriptorSet[PipelineTypes::SKY] =
+      vkInit::allocate_descriptor_set(
+        mDevice,
+        mFrameDescriptorPool,
+        mFrameSetLayout[PipelineTypes::SKY],
+        mHasDebug
+      );
+    f.mDescriptorSet[PipelineTypes::STANDARD] =
+      vkInit::allocate_descriptor_set(
+        mDevice,
+        mFrameDescriptorPool,
+        mFrameSetLayout[PipelineTypes::STANDARD],
+        mHasDebug
+      );
+
+    f.record_write_operations();
   }
 }
 
@@ -381,24 +479,20 @@ void Engine::render_objects(vk::CommandBuffer commandBuffer,
                            uint32_t* startInstance, uint32_t instanceCount) {
   uint32_t firstIndex = mMeshes->getOffset(objType);
   uint32_t indexCount = mMeshes->getSize(objType);
-  mMaterials[objType]->use(commandBuffer, mPipelineLayout);
+  mMaterials[objType]->use(
+    commandBuffer,
+    mPipelineLayout[PipelineTypes::STANDARD]
+  );
   commandBuffer.drawIndexed(
     indexCount, instanceCount, firstIndex, 0, *startInstance);
   *startInstance += instanceCount;
 }
 
-void Engine::record_draw_commands(vk::CommandBuffer commandBuffer,
-                                  uint32_t imageIndex, Scene* scene) {
-  vk::CommandBufferBeginInfo beginInfo {};
-  try {
-    commandBuffer.begin(beginInfo);
-  } catch (vk::SystemError err) {
-    if (mHasDebug) {
-      printf("Failed to begin recording command buffer. Error: %s\n",
-             err.what());
-    }
-  }
-
+void Engine::record_draw_commands_standard(
+  vk::CommandBuffer commandBuffer,
+  uint32_t imageIndex,
+  Scene* scene
+) {
   vk::ClearValue clearColor  =
     { { 1.0f, 0.5f, 0.25f, 1.0f } };
   vk::ClearValue clearDepth {};
@@ -406,9 +500,9 @@ void Engine::record_draw_commands(vk::CommandBuffer commandBuffer,
   std::vector<vk::ClearValue> clearValues = { { clearColor, clearDepth } };
 
   vk::RenderPassBeginInfo renderPassInfo {};
-  renderPassInfo.renderPass          = mRenderPass;
+  renderPassInfo.renderPass          = mRenderPass[PipelineTypes::STANDARD];
   renderPassInfo.framebuffer         =
-    mSwapchainFrames[imageIndex].mFramebuffer;
+    mSwapchainFrames[imageIndex].mFramebuffer[PipelineTypes::STANDARD];
   renderPassInfo.renderArea.offset.x = 0;
   renderPassInfo.renderArea.offset.y = 0;
   renderPassInfo.renderArea.extent = mSwapchainExtent;
@@ -419,12 +513,16 @@ void Engine::record_draw_commands(vk::CommandBuffer commandBuffer,
 
   commandBuffer.bindDescriptorSets(
     vk::PipelineBindPoint::eGraphics,
-    mPipelineLayout, 0,
-    mSwapchainFrames[imageIndex].mDescriptorSet,
-    nullptr);
+    mPipelineLayout[PipelineTypes::STANDARD],
+    0,
+    mSwapchainFrames[imageIndex].mDescriptorSet[PipelineTypes::STANDARD],
+    nullptr
+  );
 
   commandBuffer.bindPipeline(
-    vk::PipelineBindPoint::eGraphics, mGraphicsPipeline);
+    vk::PipelineBindPoint::eGraphics,
+    mGraphicsPipeline[PipelineTypes::STANDARD]
+  );
 
   prepare_scene(commandBuffer);
 
@@ -441,15 +539,46 @@ void Engine::record_draw_commands(vk::CommandBuffer commandBuffer,
   }
 
   commandBuffer.endRenderPass();
+}
 
-  try {
-    commandBuffer.end();
-  } catch (vk::SystemError err) {
-    if (mHasDebug) {
-      printf("Failed to finish recording command buffer. Error: %s\n",
-             err.what());
-    }
-  }
+void Engine::record_draw_commands_sky(
+  vk::CommandBuffer commandBuffer,
+  uint32_t imageIndex,
+  Scene* scene
+) {
+  vk::ClearValue clearColor  =
+    { { 1.0f, 0.5f, 0.25f, 1.0f } };
+  std::vector<vk::ClearValue> clearValues = { { clearColor } };
+
+  vk::RenderPassBeginInfo renderPassInfo {};
+  renderPassInfo.renderPass          = mRenderPass[PipelineTypes::SKY];
+  renderPassInfo.framebuffer         =
+    mSwapchainFrames[imageIndex].mFramebuffer[PipelineTypes::SKY];
+  renderPassInfo.renderArea.offset.x = 0;
+  renderPassInfo.renderArea.offset.y = 0;
+  renderPassInfo.renderArea.extent = mSwapchainExtent;
+  renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+  renderPassInfo.pClearValues = clearValues.data();
+
+  commandBuffer.beginRenderPass(&renderPassInfo, vk::SubpassContents::eInline);
+
+  commandBuffer.bindDescriptorSets(
+    vk::PipelineBindPoint::eGraphics,
+    mPipelineLayout[PipelineTypes::SKY],
+    0,
+    mSwapchainFrames[imageIndex].mDescriptorSet[PipelineTypes::SKY],
+    nullptr
+  );
+
+  commandBuffer.bindPipeline(
+    vk::PipelineBindPoint::eGraphics,
+    mGraphicsPipeline[PipelineTypes::SKY]
+  );
+
+  mSkyCubeMap->use(commandBuffer, mPipelineLayout[PipelineTypes::SKY]);
+
+  commandBuffer.draw(6, 1, 0, 0);
+  commandBuffer.endRenderPass();
 }
 
 void Engine::render(Scene* scene) {
@@ -475,7 +604,27 @@ void Engine::render(Scene* scene) {
 
   prepare_frame(imageIndex, scene);
 
-  record_draw_commands(commandBuffer, imageIndex, scene);
+  vk::CommandBufferBeginInfo beginInfo {};
+  try {
+    commandBuffer.begin(beginInfo);
+  } catch (vk::SystemError err) {
+    if (mHasDebug) {
+      printf("Failed to begin recording command buffer. Error: %s\n",
+             err.what());
+    }
+  }
+
+  record_draw_commands_sky(commandBuffer, imageIndex, scene);
+  record_draw_commands_standard(commandBuffer, imageIndex, scene);
+
+  try {
+    commandBuffer.end();
+  } catch (vk::SystemError err) {
+    if (mHasDebug) {
+      printf("Failed to finish recording command buffer. Error: %s\n",
+             err.what());
+    }
+  }
 
   vk::Semaphore waitSemaphores[] =
     { mSwapchainFrames[mFrameNumber].mImageAvailable };

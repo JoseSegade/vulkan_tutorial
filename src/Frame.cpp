@@ -10,17 +10,35 @@ vkUtil::SwapChainFrame::~SwapChainFrame() {
 
 void vkUtil::SwapChainFrame::make_descriptor_resources() {
   BufferInputChunk input {};
-  input.physicalDevice   = mPhysicalDevice;
-  input.device           = mDevice;
-  input.memoryProperties = vk::MemoryPropertyFlagBits::eHostVisible
-    | vk::MemoryPropertyFlagBits::eHostCoherent;
-  input.size             = sizeof(UniformBufferObject);
-  input.usage            = vk::BufferUsageFlagBits::eUniformBuffer;
 
-  mCameraDataBuffer = createBuffer(input);
+  {
+    input.physicalDevice   = mPhysicalDevice;
+    input.device           = mDevice;
+    input.memoryProperties = vk::MemoryPropertyFlagBits::eHostVisible
+      | vk::MemoryPropertyFlagBits::eHostCoherent;
+    input.size             = sizeof(CameraMatrices);
+    input.usage            = vk::BufferUsageFlagBits::eUniformBuffer;
 
-  mCameraDataWriteLocation = mDevice.mapMemory(
-    mCameraDataBuffer.bufferMemory, 0, sizeof(UniformBufferObject));
+    mCameraMatrixBuffer = createBuffer(input);
+
+    mCameraMatrixWriteLocation = mDevice.mapMemory(
+      mCameraMatrixBuffer.bufferMemory,
+      0,
+      sizeof(CameraMatrices)
+    );
+  }
+
+  {
+    input.size             = sizeof(CameraVectors);
+
+    mCameraVectorsBuffer = createBuffer(input);
+
+    mCameraVectorsWriteLocation = mDevice.mapMemory(
+      mCameraVectorsBuffer.bufferMemory,
+      0,
+      sizeof(CameraVectors)
+    );
+  }
 
   input.size             = 1024 * sizeof(glm::mat4);
   input.usage            = vk::BufferUsageFlagBits::eStorageBuffer;
@@ -35,9 +53,13 @@ void vkUtil::SwapChainFrame::make_descriptor_resources() {
     mModelTransforms.push_back(glm::mat4(1.0f));
   }
 
-  mUniformBufferDescriptor.buffer = mCameraDataBuffer.buffer;
-  mUniformBufferDescriptor.offset = 0;
-  mUniformBufferDescriptor.range  = sizeof(UniformBufferObject);
+  mCameraMatrixDescriptor.buffer = mCameraMatrixBuffer.buffer;
+  mCameraMatrixDescriptor.offset = 0;
+  mCameraMatrixDescriptor.range  = sizeof(CameraMatrices);
+
+  mCameraVectorsDescriptor.buffer = mCameraVectorsBuffer.buffer;
+  mCameraVectorsDescriptor.offset = 0;
+  mCameraVectorsDescriptor.range  = sizeof(CameraVectors);
 
   mModelBufferDescriptor.buffer = mModelBuffer.buffer;
   mModelBufferDescriptor.offset = 0;
@@ -59,34 +81,55 @@ void vkUtil::SwapChainFrame::make_depth_resources() {
   imageInfo.memoryProperties = vk::MemoryPropertyFlagBits::eDeviceLocal;
   imageInfo.width            = mWidth;
   imageInfo.height           = mHeight;
+  imageInfo.arraySize        = 1;
   imageInfo.format           = mDepthFormat;
 
   mDepthBuffer       = vkImage::make_image(imageInfo);
   mDepthBufferMemory = vkImage::make_image_memory(imageInfo, mDepthBuffer);
   mDepthBufferView   = vkImage::make_image_view(
-    mDevice, mDepthBuffer, mDepthFormat, vk::ImageAspectFlagBits::eDepth);
+    mDevice,
+    mDepthBuffer,
+    mDepthFormat,
+    vk::ImageAspectFlagBits::eDepth,
+    vk::ImageViewType::e2D,
+    1
+  );
 }
 
 void vkUtil::SwapChainFrame::write_descriptor_set() {
-  vk::WriteDescriptorSet writeInfo {};
-  writeInfo.dstSet          = mDescriptorSet;
-  writeInfo.dstBinding      = 0;
-  writeInfo.dstArrayElement = 0;
-  writeInfo.descriptorCount = 1;
-  writeInfo.descriptorType  = vk::DescriptorType::eUniformBuffer;
-  writeInfo.pBufferInfo     = &mUniformBufferDescriptor;
+  mDevice.updateDescriptorSets(mWriteOps, nullptr);
+}
 
-  mDevice.updateDescriptorSets(writeInfo, nullptr);
+void vkUtil::SwapChainFrame::record_write_operations() {
+  vk::WriteDescriptorSet cameraVectorWrite {};
+  cameraVectorWrite.dstSet          = mDescriptorSet[PipelineTypes::SKY];
+  cameraVectorWrite.dstBinding      = 0;
+  cameraVectorWrite.dstArrayElement = 0;
+  cameraVectorWrite.descriptorCount = 1;
+  cameraVectorWrite.descriptorType  = vk::DescriptorType::eUniformBuffer;
+  cameraVectorWrite.pBufferInfo     = &mCameraVectorsDescriptor;
 
-  vk::WriteDescriptorSet writeInfo2 {};
-  writeInfo2.dstSet          = mDescriptorSet;
-  writeInfo2.dstBinding      = 1;
-  writeInfo2.dstArrayElement = 0;
-  writeInfo2.descriptorCount = 1;
-  writeInfo2.descriptorType  = vk::DescriptorType::eStorageBuffer;
-  writeInfo2.pBufferInfo     = &mModelBufferDescriptor;
+  vk::WriteDescriptorSet cameraMatrixWrite {};
+  cameraMatrixWrite.dstSet          = mDescriptorSet[PipelineTypes::STANDARD];
+  cameraMatrixWrite.dstBinding      = 0;
+  cameraMatrixWrite.dstArrayElement = 0;
+  cameraMatrixWrite.descriptorCount = 1;
+  cameraMatrixWrite.descriptorType  = vk::DescriptorType::eUniformBuffer;
+  cameraMatrixWrite.pBufferInfo     = &mCameraMatrixDescriptor;
 
-  mDevice.updateDescriptorSets(writeInfo2, nullptr);
+  vk::WriteDescriptorSet ssboWrite {};
+  ssboWrite.dstSet          = mDescriptorSet[PipelineTypes::STANDARD];
+  ssboWrite.dstBinding      = 1;
+  ssboWrite.dstArrayElement = 0;
+  ssboWrite.descriptorCount = 1;
+  ssboWrite.descriptorType  = vk::DescriptorType::eStorageBuffer;
+  ssboWrite.pBufferInfo     = &mModelBufferDescriptor;
+
+  mWriteOps = { {
+    cameraVectorWrite,
+    cameraMatrixWrite,
+    ssboWrite
+  } };
 }
 
 void vkUtil::SwapChainFrame::destroy() {
@@ -95,14 +138,20 @@ void vkUtil::SwapChainFrame::destroy() {
   mDevice.destroyImageView(mDepthBufferView);
 
   mDevice.destroyImageView(mImageView);
-  mDevice.destroyFramebuffer(mFramebuffer);
+  for (PipelineTypes pt : sPipelineTypes) {
+    mDevice.destroyFramebuffer(mFramebuffer[pt]);
+  }
   mDevice.destroyFence(mInFlight);
   mDevice.destroySemaphore(mImageAvailable);
   mDevice.destroySemaphore(mRenderFinished);
 
-  mDevice.unmapMemory(mCameraDataBuffer.bufferMemory);
-  mDevice.freeMemory(mCameraDataBuffer.bufferMemory);
-  mDevice.destroyBuffer(mCameraDataBuffer.buffer);
+  mDevice.unmapMemory(mCameraMatrixBuffer.bufferMemory);
+  mDevice.freeMemory(mCameraMatrixBuffer.bufferMemory);
+  mDevice.destroyBuffer(mCameraMatrixBuffer.buffer);
+
+  mDevice.unmapMemory(mCameraVectorsBuffer.bufferMemory);
+  mDevice.freeMemory(mCameraVectorsBuffer.bufferMemory);
+  mDevice.destroyBuffer(mCameraVectorsBuffer.buffer);
 
   mDevice.unmapMemory(mModelBuffer.bufferMemory);
   mDevice.freeMemory(mModelBuffer.bufferMemory);

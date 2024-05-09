@@ -5,8 +5,11 @@
 
 #include "Common.h"
 #include "Frame.h"
+#include "Pipeline.h"
 #include "VertexMenagerie.h"
 #include "Image.h"
+#include "Texture.h"
+#include "Cubemap.h"
 #include <vector>
 #include <unordered_map>
 
@@ -32,11 +35,22 @@ class Engine {
   void make_assets();
   void prepare_scene(vk::CommandBuffer commandBuffer);
   void prepare_frame(uint32_t imageIndex, Scene* scene);
-  void record_draw_commands(vk::CommandBuffer commandBuffer,
-                            uint32_t imageIndex, Scene* scene);
-  void render_objects(vk::CommandBuffer commandBuffer,
-                      vkMesh::MeshTypes objType,
-                      uint32_t* startInstance, uint32_t instanceCount);
+  void record_draw_commands_sky(
+    vk::CommandBuffer commandBuffer,
+    uint32_t imageIndex,
+    Scene* scene
+  );
+  void record_draw_commands_standard(
+    vk::CommandBuffer commandBuffer,
+    uint32_t imageIndex,
+    Scene* scene
+  );
+  void render_objects(
+    vk::CommandBuffer commandBuffer,
+    vkMesh::MeshTypes objType,
+    uint32_t* startInstance,
+    uint32_t instanceCount
+  );
 
  private:
   using TextureMap = std::unordered_map<vkMesh::MeshTypes, vkImage::Texture*>;
@@ -62,14 +76,14 @@ class Engine {
   vk::Format                          mSwapchainFormat;
   vk::Extent2D                        mSwapchainExtent;
 
-  vk::DescriptorSetLayout             mFrameSetLayout;
-  vk::DescriptorPool                  mFrameDescriptorPool;
-  vk::DescriptorSetLayout             mMeshSetLayout;
-  vk::DescriptorPool                  mMeshDescriptorPool;
+  std::unordered_map<PipelineTypes, vk::DescriptorSetLayout> mFrameSetLayout;
+  vk::DescriptorPool mFrameDescriptorPool;
+  std::unordered_map<PipelineTypes, vk::DescriptorSetLayout> mMeshSetLayout;
+  vk::DescriptorPool mMeshDescriptorPool;
 
-  vk::PipelineLayout                  mPipelineLayout;
-  vk::RenderPass                      mRenderPass;
-  vk::Pipeline                        mGraphicsPipeline;
+  std::unordered_map<PipelineTypes, vk::PipelineLayout> mPipelineLayout;
+  std::unordered_map<PipelineTypes, vk::RenderPass>     mRenderPass;
+  std::unordered_map<PipelineTypes, vk::Pipeline>       mGraphicsPipeline;
 
   vk::CommandPool                     mCommandPool;
   vk::CommandBuffer                   mMainCommandBuffer;
@@ -79,6 +93,7 @@ class Engine {
 
   VertexMenagerie*                    mMeshes = nullptr;
   TextureMap                          mMaterials;
+  vkImage::CubeMap*                   mSkyCubeMap = nullptr;
 };
 
 #endif  // INC_ENGINE_H_
