@@ -389,8 +389,8 @@ void Engine::prepare_frame(uint32_t frameIndex, Scene* scene) {
   glm::vec4 cam_vec_up       = {  0.0f,  0.0f,  1.0f, 0.0f };
 
   frame.mCameraVectorsData.forwards = cam_vec_forwards;
-  frame.mCameraVectorsData.right    = cam_vec_forwards;
-  frame.mCameraVectorsData.up       = cam_vec_forwards;
+  frame.mCameraVectorsData.right    = cam_vec_right;
+  frame.mCameraVectorsData.up       = cam_vec_up;
 
   memcpy(frame.mCameraVectorsWriteLocation,
          &frame.mCameraVectorsData,
