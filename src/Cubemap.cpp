@@ -187,7 +187,11 @@ void vkImage::CubeMap::make_sampler() {
 void vkImage::CubeMap::make_descriptor_set() {
   bool debug = true;
   mDescriptorSet  = vkInit::allocate_descriptor_set(
-    mDevice, mDescriptorPool, mLayout, debug);
+    mDevice,
+    mDescriptorPool,
+    mLayout,
+    debug
+  );
 
   vk::DescriptorImageInfo imageDescriptor {};
   imageDescriptor.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;

@@ -128,7 +128,7 @@ vk::ImageView vkImage::make_image_view(
 ) {
   vk::ImageViewCreateInfo createInfo{};
   createInfo.image        = image;
-  createInfo.viewType     = vk::ImageViewType::e2D;
+  createInfo.viewType     = type;
   createInfo.components.r = vk::ComponentSwizzle::eIdentity;
   createInfo.components.g = vk::ComponentSwizzle::eIdentity;
   createInfo.components.b = vk::ComponentSwizzle::eIdentity;

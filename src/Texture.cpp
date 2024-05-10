@@ -55,8 +55,12 @@ void vkImage::Texture::init(const TextureInputChunk& input) {
 void vkImage::Texture::use(vk::CommandBuffer commandBuffer,
                            vk::PipelineLayout pipelineLayout) {
   commandBuffer.bindDescriptorSets(
-    vk::PipelineBindPoint::eGraphics, pipelineLayout,
-    1, mDescriptorSet, nullptr);
+    vk::PipelineBindPoint::eGraphics,
+    pipelineLayout,
+    1,
+    mDescriptorSet,
+    nullptr
+  );
 }
 
 void vkImage::Texture::load() {
