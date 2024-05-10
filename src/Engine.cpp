@@ -208,47 +208,52 @@ void Engine::make_descriptor_set_layouts() {
 }
 
 void Engine::make_pipeline() {
-  {
-    vkInit::GraphicsPipelineInBundle specification {};
-    specification.device               = mDevice;
-    specification.vertexFilepath       = "./bin/shaders/default.vert.spv";
-    specification.fragmenFilepath      = "./bin/shaders/default.frag.spv";
-    specification.extent               = mSwapchainExtent;
-    specification.swapchainFormat      = mSwapchainFormat;
-    specification.depthFormat          = mSwapchainFrames[0].mDepthFormat;
-    specification.enableDepth          = true;
-    specification.descriptorSetLayouts = {
-      mFrameSetLayout[PipelineTypes::STANDARD],
-      mMeshSetLayout[PipelineTypes::STANDARD]
-    };
+  vkInit::PipelineBuilder pipelineBuilder {};
+  pipelineBuilder.init(mDevice);
 
-    vkInit::GraphicsPipelineOutBundle output =
-      vkInit::make_graphics_pipeline(specification, true, mHasDebug);
+  pipelineBuilder.set_overwrite_mode(false);
+  pipelineBuilder.specify_vertex_shader("./bin/shaders/sky_shader.vert.spv");
+  pipelineBuilder.specify_fragment_shader("./bin/shaders/sky_shader.frag.spv");
+  pipelineBuilder.specify_swapchain_extent(mSwapchainExtent);
+  pipelineBuilder.clear_depth_attachment();
+  pipelineBuilder.add_descriptor_set_layout(
+    mFrameSetLayout[PipelineTypes::SKY]
+  );
+  pipelineBuilder.add_descriptor_set_layout(
+    mMeshSetLayout[PipelineTypes::SKY]
+  );
+  pipelineBuilder.add_color_attachment(mSwapchainFormat, 0);
 
-    mPipelineLayout[PipelineTypes::STANDARD]   = output.pipelineLayout;
-    mRenderPass[PipelineTypes::STANDARD]       = output.renderPass;
-    mGraphicsPipeline[PipelineTypes::STANDARD] = output.graphicsPipeline;
-  }
-  {
-    vkInit::GraphicsPipelineInBundle specification {};
-    specification.device               = mDevice;
-    specification.vertexFilepath       = "./bin/shaders/sky_shader.vert.spv";
-    specification.fragmenFilepath      = "./bin/shaders/sky_shader.frag.spv";
-    specification.extent               = mSwapchainExtent;
-    specification.swapchainFormat      = mSwapchainFormat;
-    specification.enableDepth          = false;
-    specification.descriptorSetLayouts = {
-      mFrameSetLayout[PipelineTypes::SKY],
-      mMeshSetLayout[PipelineTypes::SKY]
-    };
+  vkInit::GraphicsPipelineOutBundle output = pipelineBuilder.build();
 
-    vkInit::GraphicsPipelineOutBundle output =
-      vkInit::make_graphics_pipeline(specification, true, mHasDebug);
+  mPipelineLayout[PipelineTypes::SKY]   = output.pipelineLayout;
+  mRenderPass[PipelineTypes::SKY]       = output.renderPass;
+  mGraphicsPipeline[PipelineTypes::SKY] = output.graphicsPipeline;
 
-    mPipelineLayout[PipelineTypes::SKY]   = output.pipelineLayout;
-    mRenderPass[PipelineTypes::SKY]       = output.renderPass;
-    mGraphicsPipeline[PipelineTypes::SKY] = output.graphicsPipeline;
-  }
+  pipelineBuilder.reset();
+
+  pipelineBuilder.set_overwrite_mode(true);
+  pipelineBuilder.specify_vertex_format(
+    vkMesh::getPosColorBindingDescription(),
+    vkMesh::getPosColorAttributeDescriptions()
+  );
+  pipelineBuilder.specify_vertex_shader("./bin/shaders/default.vert.spv");
+  pipelineBuilder.specify_fragment_shader("./bin/shaders/default.frag.spv");
+  pipelineBuilder.specify_swapchain_extent(mSwapchainExtent);
+  pipelineBuilder.specify_depth_attachment(mSwapchainFrames[0].mDepthFormat, 1);
+  pipelineBuilder.add_descriptor_set_layout(
+    mFrameSetLayout[PipelineTypes::STANDARD]
+  );
+  pipelineBuilder.add_descriptor_set_layout(
+    mMeshSetLayout[PipelineTypes::STANDARD]
+  );
+  pipelineBuilder.add_color_attachment(mSwapchainFormat, 0);
+
+  output = pipelineBuilder.build();
+
+  mPipelineLayout[PipelineTypes::STANDARD]   = output.pipelineLayout;
+  mRenderPass[PipelineTypes::STANDARD]       = output.renderPass;
+  mGraphicsPipeline[PipelineTypes::STANDARD] = output.graphicsPipeline;
 }
 
 void Engine::finalize_setup() {
